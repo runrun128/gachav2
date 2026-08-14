@@ -1,5 +1,5 @@
 import { STEP_REPLAY_MS } from "@identity-slot/game-core";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ReplayState<TStep> {
   visibleLogCount: number;
@@ -12,6 +12,12 @@ interface ReplayState<TStep> {
  * サーバーから渡された steps を約3.2秒間隔で1手ずつ再生する。
  * previousLogCount〜visibleLogCount が「今まさに表示すべき1手分のメッセージ」の範囲になる。
  * 初回マウント時(再接続・resume)はアニメーションなしで即座に最新状態を表示する。
+ *
+ * 新ラウンド検知(1手目への切り替え)はレンダー中に同期的に行う。
+ * これをuseEffect経由にすると、呼び出し元(RaidRoomPage等)のstate更新コミットと
+ * このフックのactiveStep更新コミットが別コミットに分かれてしまい、その間の一瞬
+ * (新しいstate.fighters.hp + 古いactiveStepという不整合な組み合わせ)がFighterVitals側の
+ * useEffectに見えてしまうことがあった。これが「攻撃すると自分のHPに+表示が出る」不具合の原因。
  */
 export function useRoundReplay<TStep extends { upToLine: number }>(
   logLength: number,
@@ -23,24 +29,33 @@ export function useRoundReplay<TStep extends { upToLine: number }>(
     activeStep: null,
   });
   const lastLogLengthRef = useRef(logLength);
+  const relevantStepsRef = useRef<TStep[]>([]);
   const timersRef = useRef<number[]>([]);
 
-  useLayoutEffect(() => {
-    timersRef.current.forEach((t) => window.clearTimeout(t));
-    timersRef.current = [];
-
+  if (logLength !== lastLogLengthRef.current) {
     const grew = logLength > lastLogLengthRef.current;
     const startCount = lastLogLengthRef.current;
-    lastLogLengthRef.current = logLength;
-
     const relevantSteps = grew && steps ? steps.filter((s) => s.upToLine <= logLength) : [];
+    lastLogLengthRef.current = logLength;
+    relevantStepsRef.current = relevantSteps;
 
     if (relevantSteps.length === 0) {
       setState({ visibleLogCount: logLength, previousLogCount: logLength, activeStep: null });
-      return;
+    } else {
+      setState({
+        visibleLogCount: relevantSteps[0].upToLine,
+        previousLogCount: startCount,
+        activeStep: relevantSteps[0],
+      });
     }
+  }
 
-    setState({ visibleLogCount: relevantSteps[0].upToLine, previousLogCount: startCount, activeStep: relevantSteps[0] });
+  useEffect(() => {
+    timersRef.current.forEach((t) => window.clearTimeout(t));
+    timersRef.current = [];
+
+    const relevantSteps = relevantStepsRef.current;
+    if (relevantSteps.length <= 1) return;
 
     relevantSteps.slice(1).forEach((step, i) => {
       const previousStep = relevantSteps[i];
