@@ -12,6 +12,16 @@ import { requireAuth } from "../middleware/auth";
 
 export const charactersRouter = Router();
 
+// バトル/レイドのキャラクター選択用。/history と違いページングで切り捨てず、
+// 所持キャラクター全件を返す(選べるキャラが「直近のものだけ」にならないようにするため)。
+charactersRouter.get("/characters/mine", requireAuth, async (req, res) => {
+  const characters = await prisma.character.findMany({
+    where: { userId: req.user!.id },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({ items: characters });
+});
+
 charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const character = await prisma.character.findFirst({ where: { id: req.params.id, userId } });

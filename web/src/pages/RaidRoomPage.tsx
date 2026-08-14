@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BattleLog } from "../components/BattleLog";
 import { BossImage } from "../components/BossImage";
+import { CharacterPicker } from "../components/CharacterPicker";
 import { FighterVitals } from "../components/FighterVitals";
 import { RarityTag } from "../components/RarityTag";
 import { useRoundReplay } from "../hooks/useRoundReplay";
@@ -119,7 +120,7 @@ export function RaidRoomPage() {
 
   const { data: historyData } = useQuery({
     queryKey: ["raid-characters"],
-    queryFn: () => api.get<{ items: CharacterRow[] }>("/history?pageSize=100"),
+    queryFn: () => api.get<{ items: CharacterRow[] }>("/characters/mine"),
     enabled: state?.phase === "select",
   });
 
@@ -306,24 +307,7 @@ export function RaidRoomPage() {
           {me?.characterSelected ? (
             <p style={{ color: "var(--text-dim)" }}>他の参加者の選択を待っています……</p>
           ) : (
-            <div className="result-grid">
-              {historyData?.items.map((c) => (
-                <button
-                  type="button"
-                  className="card"
-                  key={c.id}
-                  disabled={selecting}
-                  onClick={() => selectCharacter(c.id)}
-                >
-                  <RarityTag rarity={c.rarity} /> Lv{c.level}
-                  <div>
-                    {c.nationality}
-                    {c.age}歳{c.gender}
-                  </div>
-                  <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>🎭{c.feature}</div>
-                </button>
-              ))}
-            </div>
+            <CharacterPicker characters={historyData?.items ?? []} disabled={selecting} onSelect={selectCharacter} />
           )}
         </div>
       )}
