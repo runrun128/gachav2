@@ -6,6 +6,7 @@ export function roomToStateDTO(room: BattleRoom) {
     roomId: room.id,
     phase: room.phase,
     roundNo: room.roundNo,
+    settings: room.settings,
     log: room.log,
     roundSteps: room.lastRoundSteps,
     winnerUserId: room.winnerUserId,

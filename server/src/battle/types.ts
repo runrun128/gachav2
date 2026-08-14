@@ -37,6 +37,11 @@ export interface BattleFighter {
   retired: boolean;
 }
 
+export interface BattleSettings {
+  maxRounds: number;
+  itemsAllowed: boolean;
+}
+
 export interface RoundStep {
   /** この時点で room.log は何行まで確定しているか(絶対インデックス) */
   upToLine: number;
@@ -59,6 +64,7 @@ export interface BattleRoom {
   roundTimer: NodeJS.Timeout | null;
   selectTimer: NodeJS.Timeout | null;
   resolving: boolean;
+  settings: BattleSettings;
 }
 
 export interface PendingChallenge {
@@ -69,4 +75,5 @@ export interface PendingChallenge {
   toDisplayName: string;
   expiresAt: number;
   timer: NodeJS.Timeout;
+  settings: BattleSettings;
 }

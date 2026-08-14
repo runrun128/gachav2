@@ -1,6 +1,6 @@
 import { Server as IOServer, Socket } from "socket.io";
 import { BattleManager, UserFacingError } from "../battle/manager";
-import { PendingAction } from "../battle/types";
+import { BattleSettings, PendingAction } from "../battle/types";
 
 type AckResponse = { ok: true; data?: unknown } | { ok: false; error: string };
 type Ack = (response: AckResponse) => void;
@@ -17,8 +17,8 @@ function wrap(fn: () => Promise<unknown> | unknown, ack?: Ack) {
 }
 
 export function registerBattleHandlers(_io: IOServer, socket: Socket, manager: BattleManager, userId: string) {
-  socket.on("battle:challenge", (payload: { targetUserId: string }, ack?: Ack) =>
-    wrap(() => manager.createChallenge(userId, payload.targetUserId), ack)
+  socket.on("battle:challenge", (payload: { targetUserId: string; settings?: Partial<BattleSettings> }, ack?: Ack) =>
+    wrap(() => manager.createChallenge(userId, payload.targetUserId, payload.settings), ack)
   );
 
   socket.on("battle:respondChallenge", (payload: { challengeId: string; accept: boolean }, ack?: Ack) =>

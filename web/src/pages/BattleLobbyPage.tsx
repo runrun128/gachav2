@@ -1,3 +1,4 @@
+import { MAX_BATTLE_ROUNDS } from "@identity-slot/game-core";
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
@@ -23,6 +24,8 @@ export function BattleLobbyPage() {
   const [outgoing, setOutgoing] = useState<{ challengeId: string; targetName: string } | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [maxRounds, setMaxRounds] = useState(String(MAX_BATTLE_ROUNDS));
+  const [itemsAllowed, setItemsAllowed] = useState(true);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -66,13 +69,17 @@ export function BattleLobbyPage() {
   function challenge(target: UserResult) {
     if (!socket) return;
     setStatusMessage(null);
-    socket.emit("battle:challenge", { targetUserId: target.id }, (res: AckResponse<{ challengeId: string }>) => {
-      if (res.ok && res.data) {
-        setOutgoing({ challengeId: res.data.challengeId, targetName: target.displayName });
-      } else {
-        setStatusMessage(res.error ?? "挑戦に失敗しました。");
+    socket.emit(
+      "battle:challenge",
+      { targetUserId: target.id, settings: { maxRounds: Number(maxRounds), itemsAllowed } },
+      (res: AckResponse<{ challengeId: string }>) => {
+        if (res.ok && res.data) {
+          setOutgoing({ challengeId: res.data.challengeId, targetName: target.displayName });
+        } else {
+          setStatusMessage(res.error ?? "挑戦に失敗しました。");
+        }
       }
-    });
+    );
   }
 
   return (
@@ -92,6 +99,32 @@ export function BattleLobbyPage() {
           {connected ? "🟢 接続中" : "🔴 接続待機中……"} — 表示名で相手を検索して挑戦しましょう。オンラインの相手のみ挑戦できます。
         </p>
         {statusMessage && <p className="error-text">{statusMessage}</p>}
+
+        <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginBottom: "0.85rem" }}>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            ターン制限
+            <input
+              type="number"
+              min={3}
+              max={30}
+              value={maxRounds}
+              onChange={(e) => setMaxRounds(e.target.value)}
+              style={{
+                background: "var(--bg-panel-raised)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: "0.4rem 0.5rem",
+                color: "var(--text)",
+                width: 70,
+              }}
+            />
+            ラウンド
+          </label>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            <input type="checkbox" checked={itemsAllowed} onChange={(e) => setItemsAllowed(e.target.checked)} />
+            アイテム使用を許可
+          </label>
+        </div>
 
         <form onSubmit={search} className="btn-row">
           <input

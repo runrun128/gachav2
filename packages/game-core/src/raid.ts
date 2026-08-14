@@ -1,5 +1,4 @@
 export const MAX_RAID_PARTICIPANTS = 4;
-export const RAID_MAX_ROUNDS = 20;
 export const RAID_WIN_REWARD = 400;
 export const RAID_LOSE_REWARD = 100;
 export const RAID_ITEM_DROP_CHANCE = 30; // %

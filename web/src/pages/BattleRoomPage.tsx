@@ -48,6 +48,7 @@ interface BattleStateDTO {
   roomId: string;
   phase: "select" | "round" | "finished";
   roundNo: number;
+  settings: { maxRounds: number; itemsAllowed: boolean };
   log: string[];
   roundSteps: RoundStepDTO[];
   winnerUserId: string | "draw" | null;
@@ -178,15 +179,18 @@ export function BattleRoomPage() {
   }
 
   return (
-    <div>
+    <div className="battle-compact">
       <div className="panel">
         <h1>⚔️ IDENTITY BATTLE</h1>
-        {state.phase === "round" && <p style={{ color: "var(--text-dim)" }}>ラウンド {state.roundNo}</p>}
+        {state.phase === "round" && (
+          <p style={{ color: "var(--text-dim)" }}>
+            ラウンド {state.roundNo} / {state.settings.maxRounds}
+            {!state.settings.itemsAllowed && " ・ アイテム禁止"}
+          </p>
+        )}
         <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
-      </div>
 
-      <div className="panel">
-        <div className="btn-row" style={{ alignItems: "stretch" }}>
+        <div className="btn-row" style={{ alignItems: "stretch", marginTop: "0.75rem" }}>
           <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
           <FighterPanel label="相手" player={opponent} isSelf={false} hpOverride={activeStep?.hp[opponent.userId]} />
         </div>
@@ -252,9 +256,11 @@ export function BattleRoomPage() {
                     💀 一か八か{me.fighter!.gambleCooldown > 0 ? `(あと${me.fighter!.gambleCooldown}R)` : ""}
                   </button>
                 )}
-                <button className="action-btn" disabled={submitting} onClick={() => setShowItemPicker((v) => !v)}>
-                  🎒 アイテム
-                </button>
+                {state.settings.itemsAllowed && (
+                  <button className="action-btn" disabled={submitting} onClick={() => setShowItemPicker((v) => !v)}>
+                    🎒 アイテム
+                  </button>
+                )}
                 <button
                   className="action-btn"
                   style={{ color: "var(--danger)", borderColor: confirmingRetire ? "var(--danger)" : undefined }}

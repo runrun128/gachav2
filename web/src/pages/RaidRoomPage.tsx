@@ -197,7 +197,7 @@ export function RaidRoomPage() {
   }
 
   return (
-    <div>
+    <div className="battle-compact">
       <div className="panel">
         <h1>
           {state.bossEmoji} {state.roomName}
@@ -222,6 +222,20 @@ export function RaidRoomPage() {
             <div style={{ fontSize: "0.85rem", marginTop: "0.2rem" }}>
               HP {activeStep?.bossHp ?? state.boss.hp}/{state.boss.maxHp}
             </div>
+          </div>
+        )}
+
+        {(state.phase === "round" || state.phase === "finished") && (
+          <div className="btn-row" style={{ alignItems: "stretch", flexWrap: "wrap", marginTop: "0.75rem" }}>
+            {state.participants.map((p) => (
+              <RaidFighterPanel
+                key={p.userId}
+                participant={p}
+                isSelf={p.userId === user.id}
+                mvp={p.userId === state.mvpUserId}
+                hpOverride={activeStep?.participantHp[p.userId]}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -281,23 +295,6 @@ export function RaidRoomPage() {
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {(state.phase === "round" || state.phase === "finished") && (
-        <div className="panel">
-          <h3>参加者</h3>
-          <div className="btn-row" style={{ alignItems: "stretch", flexWrap: "wrap" }}>
-            {state.participants.map((p) => (
-              <RaidFighterPanel
-                key={p.userId}
-                participant={p}
-                isSelf={p.userId === user.id}
-                mvp={p.userId === state.mvpUserId}
-                hpOverride={activeStep?.participantHp[p.userId]}
-              />
-            ))}
-          </div>
         </div>
       )}
 

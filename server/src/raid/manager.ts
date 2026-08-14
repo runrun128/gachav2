@@ -8,7 +8,6 @@ import {
   RAID_CHARACTER_SELECT_TIMEOUT_MS,
   RAID_ITEM_DROP_CHANCE,
   RAID_LOSE_REWARD,
-  RAID_MAX_ROUNDS,
   RAID_MVP_BONUS,
   RAID_ROUND_ACTION_TIMEOUT_MS,
   RAID_ROUND_INTERMISSION_MS,
@@ -170,11 +169,7 @@ export class RaidManager {
     room.roundNo += 1;
     room.pending = {};
 
-    if (room.roundNo > RAID_MAX_ROUNDS) {
-      this.finish(room, false, "時間切れ").catch((err) => console.error("[raid finish]", err));
-      return;
-    }
-
+    // レイドはターン無制限固定。ボス討伐 or 全滅でのみ決着する。
     applyRoundStartEffects(room);
 
     if (room.boss!.hp <= 0) {

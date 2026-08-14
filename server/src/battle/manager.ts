@@ -17,9 +17,19 @@ import { prisma } from "../lib/prisma";
 import { isUserOnline } from "../socket/presence";
 import { roomToStateDTO } from "./dto";
 import { buildFighter, resolveRound } from "./engine";
-import { BattleRoom, PendingAction, PendingChallenge } from "./types";
+import { BattleRoom, BattleSettings, PendingAction, PendingChallenge } from "./types";
 
 export class UserFacingError extends Error {}
+
+const MIN_ROUNDS = 3;
+const MAX_ROUNDS_CAP = 30;
+
+function normalizeSettings(input: Partial<BattleSettings> | undefined): BattleSettings {
+  const maxRoundsRaw = input?.maxRounds ?? MAX_BATTLE_ROUNDS;
+  const maxRounds = Math.min(MAX_ROUNDS_CAP, Math.max(MIN_ROUNDS, Math.round(maxRoundsRaw)));
+  const itemsAllowed = input?.itemsAllowed ?? true;
+  return { maxRounds, itemsAllowed };
+}
 
 export class BattleManager {
   private io: IOServer;
@@ -31,7 +41,7 @@ export class BattleManager {
     this.io = io;
   }
 
-  async createChallenge(fromUserId: string, toUserId: string) {
+  async createChallenge(fromUserId: string, toUserId: string, settingsInput?: Partial<BattleSettings>) {
     if (fromUserId === toUserId) throw new UserFacingError("自分には挑戦できません。");
     if (this.roomByUser.has(fromUserId)) throw new UserFacingError("あなたはすでに別のバトル中です。");
     if (this.roomByUser.has(toUserId)) throw new UserFacingError("相手は別のバトル中です。");
@@ -45,6 +55,7 @@ export class BattleManager {
     if (!fromUser || !toUser) throw new UserFacingError("ユーザーが見つかりません。");
     if (fromCharCount === 0) throw new UserFacingError("あなたはまだキャラクターがいません。先にガチャを引いてください。");
 
+    const settings = normalizeSettings(settingsInput);
     const id = randomUUID();
     const timer = setTimeout(() => this.expireChallenge(id), CHALLENGE_TIMEOUT_MS);
     const challenge: PendingChallenge = {
@@ -55,6 +66,7 @@ export class BattleManager {
       toDisplayName: toUser.displayName,
       expiresAt: Date.now() + CHALLENGE_TIMEOUT_MS,
       timer,
+      settings,
     };
     this.challenges.set(id, challenge);
 
@@ -62,6 +74,7 @@ export class BattleManager {
       challengeId: id,
       from: { id: fromUserId, displayName: fromUser.displayName },
       expiresAt: challenge.expiresAt,
+      settings,
     });
 
     return { challengeId: id };
@@ -97,7 +110,7 @@ export class BattleManager {
       throw new UserFacingError("すでに別のバトル中です。");
     }
 
-    const room = this.createRoom(c.fromUserId, c.toUserId);
+    const room = this.createRoom(c.fromUserId, c.toUserId, c.settings);
     this.emitToUser(c.fromUserId, "battle:roomReady", {
       roomId: room.id,
       opponent: { id: c.toUserId, displayName: c.toDisplayName },
@@ -110,7 +123,7 @@ export class BattleManager {
     return { accepted: true, roomId: room.id };
   }
 
-  private createRoom(userA: string, userB: string): BattleRoom {
+  private createRoom(userA: string, userB: string, settings: BattleSettings): BattleRoom {
     const room: BattleRoom = {
       id: randomUUID(),
       createdAt: Date.now(),
@@ -126,6 +139,7 @@ export class BattleManager {
       roundTimer: null,
       selectTimer: null,
       resolving: false,
+      settings,
     };
     this.rooms.set(room.id, room);
     this.roomByUser.set(userA, room.id);
@@ -177,7 +191,7 @@ export class BattleManager {
     room.roundNo += 1;
     room.pending = {};
 
-    if (room.roundNo > MAX_BATTLE_ROUNDS) {
+    if (room.roundNo > room.settings.maxRounds) {
       this.finishByHp(room);
       return;
     }
@@ -203,6 +217,7 @@ export class BattleManager {
       }
     }
     if (action.type === "item") {
+      if (!room.settings.itemsAllowed) throw new UserFacingError("このバトルではアイテム使用が禁止されています。");
       if (!action.itemKey || !ITEMS[action.itemKey]) throw new UserFacingError("アイテムが不正です。");
       const inv = await prisma.inventoryItem.findUnique({
         where: { userId_itemKey: { userId, itemKey: action.itemKey } },

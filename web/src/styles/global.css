@@ -636,6 +636,52 @@ button.card:focus-visible {
     flex-basis: 100%;
   }
 
+  /* バトル/レイド画面は情報量が多くスクロールが発生しやすいため、
+     この画面専用にさらに詰めたレイアウトにする */
+  .battle-compact .panel {
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.5rem;
+    border-radius: 10px;
+  }
+
+  .battle-compact h1 {
+    font-size: 1.05rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .battle-compact .pokemon-message-box {
+    padding: 0.6rem 0.75rem;
+    min-height: 2.6em;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .battle-compact .fighter-card {
+    padding: 0.55rem 0.7rem;
+  }
+
+  .battle-compact .fighter-card-flex {
+    flex-basis: calc(50% - 0.3rem);
+  }
+
+  .battle-compact .btn-row {
+    gap: 0.5rem;
+  }
+
+  .battle-compact .hp-bar-track {
+    height: 9px;
+  }
+
+  .battle-compact .action-grid {
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  .battle-compact .action-btn {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.82rem;
+  }
+
   .result-grid {
     grid-template-columns: 1fr;
   }
