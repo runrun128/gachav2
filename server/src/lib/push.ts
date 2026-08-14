@@ -2,10 +2,18 @@ import webpush from "web-push";
 import { env } from "./env";
 import { prisma } from "./prisma";
 
-const pushEnabled = Boolean(env.vapidPublicKey && env.vapidPrivateKey);
+let pushEnabled = Boolean(env.vapidPublicKey && env.vapidPrivateKey);
 
 if (pushEnabled) {
-  webpush.setVapidDetails(env.vapidSubject, env.vapidPublicKey!, env.vapidPrivateKey!);
+  // VAPID_SUBJECTの形式ミス(mailto:を忘れている等)でここが例外を投げると、
+  // プッシュ通知機能とは無関係のサーバー全体が起動できなくなってしまうため、
+  // 設定不備時はプッシュ通知だけを無効化してサーバーは通常通り起動を続ける。
+  try {
+    webpush.setVapidDetails(env.vapidSubject, env.vapidPublicKey!, env.vapidPrivateKey!);
+  } catch (err) {
+    console.error("[push] VAPID設定が不正なため、プッシュ通知を無効化します。", err);
+    pushEnabled = false;
+  }
 } else {
   console.warn("[push] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY が未設定のため、プッシュ通知は無効です。");
 }
