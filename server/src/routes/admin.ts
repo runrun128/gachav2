@@ -2,7 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
 import { deleteUserAccount } from "../lib/accountDeletion";
-import { applyCustomFeature, applyCustomItem, removeCustomFeature, removeCustomItem } from "../lib/gameContent";
+import {
+  applyCustomFeature,
+  applyCustomItem,
+  applyShopOverride,
+  removeCustomFeature,
+  removeCustomItem,
+} from "../lib/gameContent";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
@@ -196,14 +202,14 @@ const createCustomItemSchema = z.object({
     .regex(/^[a-z0-9_]+$/, "半角英数字とアンダースコアのみ使えます。"),
   name: z.string().min(1).max(30),
   emoji: z.string().min(1).max(10),
-  price: z.coerce.number().int().min(1).max(1_000_000).optional(),
-  purchasable: z.boolean(),
   tier: z.enum(ITEM_TIERS),
   description: z.string().min(1).max(200),
   effect: z.enum(ITEM_EFFECTS),
   value: z.coerce.number(),
 });
 
+// ショップで売るかどうか・価格は、作成後に下のショップ管理から設定する
+// (カテゴリー分け・価格調整・ラインナップの入れ替えを一箇所にまとめるため)。
 adminRouter.post("/custom-items", async (req, res) => {
   const parsed = createCustomItemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
@@ -212,7 +218,7 @@ adminRouter.post("/custom-items", async (req, res) => {
   if (ITEMS[data.key]) return res.status(400).json({ error: "そのキーはすでに使われています。" });
 
   const created = await prisma.customItem.create({
-    data: { ...data, price: data.purchasable ? data.price ?? null : null },
+    data: { ...data, purchasable: false, price: null },
   });
   applyCustomItem(created);
   res.status(201).json({ item: created });
@@ -230,6 +236,49 @@ adminRouter.delete("/custom-items/:key", async (req, res) => {
   await prisma.customItem.delete({ where: { key } });
   removeCustomItem(key);
   res.status(204).end();
+});
+
+// ===== ショップ管理(標準アイテム・独自アイテム共通) =====
+
+adminRouter.get("/shop-items", async (_req, res) => {
+  const customKeys = new Set((await prisma.customItem.findMany({ select: { key: true } })).map((c) => c.key));
+  const items = Object.values(ITEMS).map((item) => ({ ...item, isCustom: customKeys.has(item.key) }));
+  res.json({ items });
+});
+
+const shopItemSchema = z.object({
+  purchasable: z.boolean(),
+  price: z.coerce.number().int().min(1).max(1_000_000).nullable().optional(),
+  tier: z.enum(ITEM_TIERS),
+});
+
+adminRouter.patch("/shop-items/:key", async (req, res) => {
+  const key = req.params.key;
+  if (!ITEMS[key]) return res.status(404).json({ error: "そのアイテムが見つかりません。" });
+
+  const parsed = shopItemSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
+  const { purchasable, tier } = parsed.data;
+
+  if (purchasable && !parsed.data.price && !ITEMS[key].price) {
+    return res.status(400).json({ error: "ショップに並べる場合は価格を指定してください。" });
+  }
+  const price = purchasable ? parsed.data.price ?? ITEMS[key].price ?? null : null;
+
+  const existingCustomItem = await prisma.customItem.findUnique({ where: { key } });
+  if (existingCustomItem) {
+    const updated = await prisma.customItem.update({ where: { key }, data: { purchasable, price, tier } });
+    applyCustomItem(updated);
+  } else {
+    const updated = await prisma.itemShopOverride.upsert({
+      where: { itemKey: key },
+      create: { itemKey: key, purchasable, price, tier },
+      update: { purchasable, price, tier },
+    });
+    applyShopOverride(updated);
+  }
+
+  res.json({ item: ITEMS[key] });
 });
 
 // ===== 独自の趣味(特徴) =====

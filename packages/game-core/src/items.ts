@@ -83,8 +83,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
 };
 
-export const PURCHASABLE_ITEMS: ItemDef[] = Object.values(ITEMS).filter((i) => i.purchasable);
-
 export const BOSS_ITEM_TIER_WEIGHTS: Record<Exclude<ItemTier, "shop">, number> = {
   common: 50,
   uncommon: 30,

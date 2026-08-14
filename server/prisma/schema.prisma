@@ -97,6 +97,16 @@ model ItemGachaEntry {
 
 // 運営が管理画面から追加した独自アイテム。既存のITEM_EFFECTのいずれかを指定して
 // 挙動を組み立てる(全く新しい効果ロジックはコード変更なしには追加できない)。
+// 標準アイテム(game-core組み込み分)のショップ設定(購入可否/価格/カテゴリー)の上書き。
+// 独自アイテム(CustomItem)は自身のフィールドを直接編集すればよいため対象外。
+model ItemShopOverride {
+  itemKey     String   @id
+  purchasable Boolean
+  price       Int?
+  tier        String
+  updatedAt   DateTime @updatedAt
+}
+
 model CustomItem {
   id          String   @id @default(cuid())
   key         String   @unique

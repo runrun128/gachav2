@@ -31,6 +31,16 @@ interface CustomItemRow {
   value: number;
 }
 
+interface ShopItemRow extends ItemDef {
+  isCustom: boolean;
+}
+
+interface ShopItemDraft {
+  purchasable: boolean;
+  price: string;
+  tier: string;
+}
+
 interface CustomFeatureRow {
   label: string;
   hpBonus: number;
@@ -129,13 +139,59 @@ export function AdminPage() {
   const [newItemKey, setNewItemKey] = useState("");
   const [newItemName, setNewItemName] = useState("");
   const [newItemEmoji, setNewItemEmoji] = useState("");
-  const [newItemPurchasable, setNewItemPurchasable] = useState(false);
-  const [newItemPrice, setNewItemPrice] = useState("150");
   const [newItemTier, setNewItemTier] = useState<(typeof ITEM_TIER_OPTIONS)[number]>("common");
   const [newItemDescription, setNewItemDescription] = useState("");
   const [newItemEffect, setNewItemEffect] = useState<(typeof ITEM_EFFECT_OPTIONS)[number]["value"]>("heal");
   const [newItemValue, setNewItemValue] = useState("0.3");
   const [customItemBusy, setCustomItemBusy] = useState(false);
+
+  const { data: shopItemsData } = useQuery({
+    queryKey: ["admin-shop-items"],
+    queryFn: () => api.get<{ items: ShopItemRow[] }>("/admin/shop-items"),
+  });
+  const [shopDrafts, setShopDrafts] = useState<Record<string, ShopItemDraft>>({});
+  const [shopEditorBusy, setShopEditorBusy] = useState<string | null>(null);
+
+  function shopDraftFor(item: ShopItemRow): ShopItemDraft {
+    return (
+      shopDrafts[item.key] ?? {
+        purchasable: item.purchasable,
+        price: item.price != null ? String(item.price) : "",
+        tier: item.tier,
+      }
+    );
+  }
+
+  function setShopDraft(key: string, patch: Partial<ShopItemDraft>, base: ShopItemDraft) {
+    setShopDrafts((d) => ({ ...d, [key]: { ...base, ...patch } }));
+  }
+
+  async function saveShopItem(item: ShopItemRow) {
+    const draft = shopDraftFor(item);
+    setShopEditorBusy(item.key);
+    setErrorMessage(null);
+    try {
+      await api.patch(`/admin/shop-items/${item.key}`, {
+        purchasable: draft.purchasable,
+        price: draft.purchasable ? Number(draft.price) : null,
+        tier: draft.tier,
+      });
+      setShopDrafts((d) => {
+        const next = { ...d };
+        delete next[item.key];
+        return next;
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-shop-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-items"] }),
+      ]);
+      setMessage(`✅ ${item.name} のショップ設定を更新しました。`);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "更新に失敗しました。");
+    } finally {
+      setShopEditorBusy(null);
+    }
+  }
 
   const { data: customFeaturesData } = useQuery({
     queryKey: ["admin-custom-features"],
@@ -158,8 +214,6 @@ export function AdminPage() {
         key: newItemKey,
         name: newItemName,
         emoji: newItemEmoji,
-        purchasable: newItemPurchasable,
-        price: newItemPurchasable ? Number(newItemPrice) : undefined,
         tier: newItemTier,
         description: newItemDescription,
         effect: newItemEffect,
@@ -172,6 +226,7 @@ export function AdminPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-custom-items"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-shop-items"] }),
       ]);
       setMessage(`✅ アイテム「${newItemName}」を追加しました。`);
     } catch (err) {
@@ -1056,6 +1111,71 @@ export function AdminPage() {
         </div>
       </div>
 
+      <div className="panel">
+        <h3>🏪 ショップエディター</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          標準アイテム・独自アイテムどちらもここで一括管理できます。カテゴリー(レア度)ごとに分かれて表示され、
+          ショップに並べるか・価格をいくらにするかを自由に変更できます。
+        </p>
+        {ITEM_TIER_OPTIONS.map((tier) => {
+          const itemsInTier = shopItemsData?.items.filter((i) => i.tier === tier) ?? [];
+          if (itemsInTier.length === 0) return null;
+          return (
+            <div key={tier} style={{ marginTop: "1rem" }}>
+              <h4 style={{ margin: "0 0 0.5rem", textTransform: "uppercase", color: "var(--text-dim)" }}>{tier}</h4>
+              <div className="result-grid">
+                {itemsInTier.map((item) => {
+                  const draft = shopDraftFor(item);
+                  return (
+                    <div className="card" key={item.key}>
+                      <div style={{ fontWeight: 700 }}>
+                        {item.emoji} {item.name} {item.isCustom && <span style={{ color: "var(--text-dim)", fontSize: "0.75rem" }}>(独自)</span>}
+                      </div>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.4rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={draft.purchasable}
+                          onChange={(e) => setShopDraft(item.key, { purchasable: e.target.checked }, draft)}
+                        />
+                        ショップに並べる
+                      </label>
+                      {draft.purchasable && (
+                        <input
+                          value={draft.price}
+                          onChange={(e) => setShopDraft(item.key, { price: e.target.value }, draft)}
+                          placeholder="価格"
+                          style={{ ...inputStyle, width: "100%", marginTop: "0.4rem" }}
+                        />
+                      )}
+                      <select
+                        value={draft.tier}
+                        onChange={(e) => setShopDraft(item.key, { tier: e.target.value }, draft)}
+                        style={{ ...inputStyle, width: "100%", marginTop: "0.4rem" }}
+                      >
+                        {ITEM_TIER_OPTIONS.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ marginTop: "0.5rem", width: "100%" }}
+                        disabled={shopEditorBusy === item.key || (draft.purchasable && !draft.price)}
+                        onClick={() => saveShopItem(item)}
+                      >
+                        保存
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <form className="panel" onSubmit={createCustomItem}>
         <h3>🎒 独自アイテム管理</h3>
         <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
@@ -1129,24 +1249,9 @@ export function AdminPage() {
             style={{ ...inputStyle, width: 100 }}
           />
         </div>
-        <div className="btn-row" style={{ marginTop: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            <input
-              type="checkbox"
-              checked={newItemPurchasable}
-              onChange={(e) => setNewItemPurchasable(e.target.checked)}
-            />
-            ショップで購入可能にする
-          </label>
-          {newItemPurchasable && (
-            <input
-              value={newItemPrice}
-              onChange={(e) => setNewItemPrice(e.target.value)}
-              placeholder="価格"
-              style={{ ...inputStyle, width: 100 }}
-            />
-          )}
-        </div>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginTop: "0.6rem" }}>
+          ショップで売るかどうか・価格は、追加後に下の「🏪 ショップエディター」から設定してください。
+        </p>
         <textarea
           value={newItemDescription}
           onChange={(e) => setNewItemDescription(e.target.value)}

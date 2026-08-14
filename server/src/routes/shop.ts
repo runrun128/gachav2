@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ITEMS, PURCHASABLE_ITEMS } from "@identity-slot/game-core";
+import { ITEMS } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 
 export const shopRouter = Router();
 
 shopRouter.get("/shop", requireAuth, (_req, res) => {
-  res.json({ items: PURCHASABLE_ITEMS });
+  // ITEMSは運営が独自アイテムを追加/編集するたびにその場でmutateされるため、
+  // 起動時点のスナップショットではなく常に最新の状態から算出する。
+  res.json({ items: Object.values(ITEMS).filter((i) => i.purchasable) });
 });
 
 shopRouter.get("/inventory", requireAuth, async (req, res) => {

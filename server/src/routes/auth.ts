@@ -209,3 +209,11 @@ authRouter.post("/promote", requireAuth, async (req, res) => {
   const user = await prisma.user.update({ where: { id: req.user!.id }, data: { role: "admin" } });
   res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
 });
+
+// 運営権限を自分で外す(運営コードを再入力すればいつでも戻れる)
+authRouter.post("/demote", requireAuth, async (req, res) => {
+  if (req.user!.role !== "admin") return res.status(400).json({ error: "運営権限がありません。" });
+
+  const user = await prisma.user.update({ where: { id: req.user!.id }, data: { role: "user" } });
+  res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
+});
