@@ -461,6 +461,278 @@ button.card:focus-visible {
   }
 }
 
+.gacha-confirm {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  text-align: center;
+  border: 2px solid color-mix(in srgb, var(--rc, #d4af37) 60%, var(--border));
+}
+
+.gacha-confirm-rays {
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--rc, #d4af37) 35%, transparent) 8deg,
+    transparent 16deg,
+    transparent 40deg,
+    color-mix(in srgb, var(--rc, #d4af37) 35%, transparent) 48deg,
+    transparent 56deg
+  );
+  animation: gacha-rays-spin 5s linear infinite;
+  opacity: 0.85;
+}
+
+.gacha-confirm-ssr .gacha-confirm-rays {
+  animation-duration: 1.6s;
+}
+
+@keyframes gacha-rays-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== UR: 衝撃波 ===== */
+
+.confirm-shock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid var(--rc, #e74c3c);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: confirm-shock-expand 1.1s ease-out infinite;
+}
+
+.confirm-shock-2 {
+  animation-delay: 0.3s;
+}
+
+.confirm-shock-3 {
+  animation-delay: 0.6s;
+}
+
+@keyframes confirm-shock-expand {
+  0% {
+    width: 40px;
+    height: 40px;
+    opacity: 0.9;
+    border-width: 5px;
+  }
+  100% {
+    width: 340px;
+    height: 340px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+.gacha-confirm-ur .gacha-confirm-label {
+  animation: gacha-confirm-shake 0.35s ease-in-out infinite;
+}
+
+/* ===== MUR: 神話の虹色 ===== */
+
+.confirm-holo {
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(from 0deg, #ff004c, #ff9500, #ffec00, #4dff00, #00fff2, #7000ff, #ff004c);
+  filter: blur(34px);
+  opacity: 0.4;
+  animation: confirm-holo-spin 3s linear infinite;
+}
+
+@keyframes confirm-holo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gacha-confirm-mur .gacha-confirm-label {
+  background: linear-gradient(90deg, #ff004c, #ff9500, #ffec00, #4dff00, #00fff2, #7000ff, #ff004c);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: confirm-holo-text 1.8s linear infinite;
+}
+
+@keyframes confirm-holo-text {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 300% 0;
+  }
+}
+
+/* ===== KMR: 運営限定の二重リング ===== */
+
+.confirm-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px dashed var(--rc, #ff2e9a);
+  transform: translate(-50%, -50%);
+  opacity: 0.65;
+}
+
+.confirm-ring-ccw {
+  width: 195px;
+  height: 195px;
+}
+
+.confirm-ring-cw {
+  animation: confirm-ring-spin 6s linear infinite;
+}
+
+.confirm-ring-ccw {
+  animation: confirm-ring-spin-rev 5s linear infinite;
+}
+
+@keyframes confirm-ring-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes confirm-ring-spin-rev {
+  from {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+}
+
+.gacha-confirm-kmr {
+  animation: gacha-confirm-majestic-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes gacha-confirm-majestic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 30px color-mix(in srgb, var(--rc, #ff2e9a) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 60px color-mix(in srgb, var(--rc, #ff2e9a) 75%, transparent);
+  }
+}
+
+/* ===== LTD: 紙吹雪 ===== */
+
+.confirm-confetti {
+  position: absolute;
+  inset: 0;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 14px;
+  background: var(--rc, #ff9500);
+  transform: translate(-50%, -50%) rotate(var(--angle));
+  animation: confetti-burst 1.1s ease-out forwards;
+  animation-delay: var(--d, 0ms);
+  opacity: 0;
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-130px) scale(1);
+    opacity: 0;
+  }
+}
+
+.gacha-confirm-ltd .gacha-confirm-label {
+  animation: gacha-confirm-bounce 0.6s ease-in-out infinite;
+}
+
+@keyframes gacha-confirm-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.gacha-confirm-text {
+  position: relative;
+  z-index: 1;
+  animation: gacha-confirm-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes gacha-confirm-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.gacha-confirm-label {
+  margin-top: 0.5rem;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--rc, #d4af37);
+  text-shadow: 0 0 20px color-mix(in srgb, var(--rc, #d4af37) 70%, transparent);
+  letter-spacing: 0.05em;
+}
+
+@keyframes gacha-confirm-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(4px) rotate(1deg);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
 .ticket-card {
   position: relative;
   overflow: hidden;

@@ -16,7 +16,7 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 
 type PullType = "single" | "ten" | "sr" | "ssr";
-type Phase = "idle" | "shuffling" | "revealing" | "single-done" | "ten-shuffling" | "ten-done";
+type Phase = "idle" | "shuffling" | "revealing" | "confirming" | "single-done" | "ten-shuffling" | "ten-done";
 
 interface LimitedBanner {
   key: string;
@@ -29,6 +29,43 @@ const REVEAL_LABELS = ["🌍 出身国", "🎂 年齢", "⚧️ 性別", "🎭 �
 const SHUFFLE_MS = 650;
 const TEN_SHUFFLE_MS = 1000;
 const FLASH_MS = 400;
+const CONFIRM_MS_PLAIN = 700;
+const CONFIRM_MS_FLASHY = 1300;
+const CONFIRM_MS_MAJESTIC = 1700;
+
+type ConfirmTier = "plain" | "ssr" | "ur" | "mur" | "kmr" | "ltd";
+
+function confirmTierFor(r: Rarity): ConfirmTier {
+  if (r === "SSR") return "ssr";
+  if (r === "UR") return "ur";
+  if (r === "MUR") return "mur";
+  if (r === "KMR") return "kmr";
+  if (r === "LTD") return "ltd";
+  return "plain";
+}
+
+function confirmDurationFor(tier: ConfirmTier): number {
+  if (tier === "plain") return CONFIRM_MS_PLAIN;
+  if (tier === "kmr" || tier === "mur") return CONFIRM_MS_MAJESTIC;
+  return CONFIRM_MS_FLASHY;
+}
+
+function confirmLabelFor(tier: ConfirmTier): string {
+  switch (tier) {
+    case "ssr":
+      return "SSR確定!!";
+    case "ur":
+      return "衝撃のUR確定!!";
+    case "mur":
+      return "神話確定!!!";
+    case "kmr":
+      return "運営限定確定!!";
+    case "ltd":
+      return "記念キャラ確定!!";
+    default:
+      return "確定";
+  }
+}
 
 function isFlashyRarity(r: Rarity): boolean {
   return r === "SSR" || r === "UR" || r === "MUR" || r === "KMR" || r === "LTD";
@@ -49,6 +86,7 @@ export function GachaPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [stage, setStage] = useState(0);
   const [results, setResults] = useState<SpinResult[]>([]);
+  const [confirmedRarity, setConfirmedRarity] = useState<Rarity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -74,6 +112,19 @@ export function GachaPage() {
     return () => window.clearInterval(t);
   }, [cooldown > 0]);
 
+  function runConfirm(rarity: Rarity, onDone: () => void) {
+    setConfirmedRarity(rarity);
+    setPhase("confirming");
+    const tier = confirmTierFor(rarity);
+    if (tier !== "plain") {
+      window.setTimeout(() => {
+        setFlash(true);
+        window.setTimeout(() => setFlash(false), FLASH_MS);
+      }, 150);
+    }
+    window.setTimeout(onDone, confirmDurationFor(tier));
+  }
+
   function beginSingleReveal(res: { results: SpinResult[]; money: number }) {
     setResults(res.results);
     setPhase("revealing");
@@ -83,14 +134,8 @@ export function GachaPage() {
       setStage(s);
       if (s >= REVEAL_LABELS.length) {
         if (timerRef.current) window.clearInterval(timerRef.current);
-        const rarity = res.results[0]?.rarity;
-        if (rarity && isFlashyRarity(rarity)) {
-          setFlash(true);
-          window.setTimeout(() => setFlash(false), FLASH_MS);
-          window.setTimeout(() => setPhase("single-done"), 180);
-        } else {
-          setPhase("single-done");
-        }
+        const rarity = res.results[0]?.rarity ?? "N";
+        runConfirm(rarity, () => setPhase("single-done"));
       }
     }, 550);
   }
@@ -107,7 +152,7 @@ export function GachaPage() {
   }
 
   async function spin(type: PullType) {
-    if (phase === "revealing" || phase === "shuffling" || phase === "ten-shuffling") return;
+    if (busy) return;
     setError(null);
     setStage(0);
     setPhase(type === "ten" ? "ten-shuffling" : "shuffling");
@@ -121,11 +166,7 @@ export function GachaPage() {
       if (type === "ten") {
         setResults(res.results);
         const bestRarity = pickBestRarity(res.results);
-        if (isFlashyRarity(bestRarity)) {
-          setFlash(true);
-          window.setTimeout(() => setFlash(false), FLASH_MS);
-        }
-        setPhase("ten-done");
+        runConfirm(bestRarity, () => setPhase("ten-done"));
       } else {
         beginSingleReveal(res);
       }
@@ -135,7 +176,7 @@ export function GachaPage() {
   }
 
   async function spinLimited(key: string) {
-    if (phase === "revealing" || phase === "shuffling" || phase === "ten-shuffling") return;
+    if (busy) return;
     setError(null);
     setStage(0);
     setPhase("shuffling");
@@ -151,71 +192,67 @@ export function GachaPage() {
     }
   }
 
-  const busy = phase === "revealing" || phase === "shuffling" || phase === "ten-shuffling";
+  const busy =
+    phase === "revealing" || phase === "shuffling" || phase === "ten-shuffling" || phase === "confirming";
+  // 演出中は選択肢を隠して、ガチャの結果だけに集中してもらう
+  const showSelection = !busy;
 
   return (
     <div>
       {flash && <div className="gacha-flash" />}
 
-      {limitedBanners.map((banner) => (
-        <div className="panel limited-banner" key={banner.key}>
-          <h2 style={{ margin: 0 }}>{banner.name}</h2>
-          <p style={{ color: "var(--text-dim)" }}>{banner.description}</p>
-          <button className="btn btn-primary" disabled={busy || cooldown > 0} onClick={() => spinLimited(banner.key)}>
-            🎉 引く({banner.cost}コイン)
-          </button>
-        </div>
-      ))}
+      {showSelection &&
+        limitedBanners.map((banner) => (
+          <div className="panel limited-banner" key={banner.key}>
+            <h2 style={{ margin: 0 }}>{banner.name}</h2>
+            <p style={{ color: "var(--text-dim)" }}>{banner.description}</p>
+            <button className="btn btn-primary" disabled={cooldown > 0} onClick={() => spinLimited(banner.key)}>
+              🎉 引く({banner.cost}コイン)
+            </button>
+          </div>
+        ))}
 
-      <div className="panel">
-        <h1>🎰 ガチャを選択</h1>
-        <p style={{ color: "var(--text-dim)" }}>あなたの「もう一つの人生」を抽選します。</p>
-        <div className="gacha-option-grid">
-          <button
-            className="gacha-option-card"
-            style={goldStyle}
-            disabled={busy || cooldown > 0}
-            onClick={() => spin("single")}
-          >
-            <span className="gacha-option-icon">🎰</span>
-            <span className="gacha-option-title">1連</span>
-            <span className="gacha-option-cost">{GACHA_COST}コイン</span>
-          </button>
-          <button
-            className="gacha-option-card gacha-option-featured"
-            style={goldStyle}
-            disabled={busy || cooldown > 0}
-            onClick={() => spin("ten")}
-          >
-            <span className="gacha-option-badge">お得</span>
-            <span className="gacha-option-icon">🔟</span>
-            <span className="gacha-option-title">10連</span>
-            <span className="gacha-option-cost">{GACHA10_COST}コイン</span>
-          </button>
-          <button
-            className="gacha-option-card"
-            style={rarityStyle("SR")}
-            disabled={busy || cooldown > 0}
-            onClick={() => spin("sr")}
-          >
-            <span className="gacha-option-icon">🥈</span>
-            <span className="gacha-option-title">SR以上確定</span>
-            <span className="gacha-option-cost">{GACHA_SR_COST}コイン</span>
-          </button>
-          <button
-            className="gacha-option-card"
-            style={rarityStyle("SSR")}
-            disabled={busy || cooldown > 0}
-            onClick={() => spin("ssr")}
-          >
-            <span className="gacha-option-icon">🥇</span>
-            <span className="gacha-option-title">SSR以上確定</span>
-            <span className="gacha-option-cost">{GACHA_SSR_COST}コイン</span>
-          </button>
+      {showSelection && (
+        <div className="panel">
+          <h1>🎰 ガチャを選択</h1>
+          <p style={{ color: "var(--text-dim)" }}>あなたの「もう一つの人生」を抽選します。</p>
+          <div className="gacha-option-grid">
+            <button className="gacha-option-card" style={goldStyle} disabled={cooldown > 0} onClick={() => spin("single")}>
+              <span className="gacha-option-icon">🎰</span>
+              <span className="gacha-option-title">1連</span>
+              <span className="gacha-option-cost">{GACHA_COST}コイン</span>
+            </button>
+            <button
+              className="gacha-option-card gacha-option-featured"
+              style={goldStyle}
+              disabled={cooldown > 0}
+              onClick={() => spin("ten")}
+            >
+              <span className="gacha-option-badge">お得</span>
+              <span className="gacha-option-icon">🔟</span>
+              <span className="gacha-option-title">10連</span>
+              <span className="gacha-option-cost">{GACHA10_COST}コイン</span>
+            </button>
+            <button className="gacha-option-card" style={rarityStyle("SR")} disabled={cooldown > 0} onClick={() => spin("sr")}>
+              <span className="gacha-option-icon">🥈</span>
+              <span className="gacha-option-title">SR以上確定</span>
+              <span className="gacha-option-cost">{GACHA_SR_COST}コイン</span>
+            </button>
+            <button
+              className="gacha-option-card"
+              style={rarityStyle("SSR")}
+              disabled={cooldown > 0}
+              onClick={() => spin("ssr")}
+            >
+              <span className="gacha-option-icon">🥇</span>
+              <span className="gacha-option-title">SSR以上確定</span>
+              <span className="gacha-option-cost">{GACHA_SSR_COST}コイン</span>
+            </button>
+          </div>
+          {cooldown > 0 && <p className="error-text">⏳ あと{cooldown.toFixed(1)}秒待ってください</p>}
+          {error && cooldown <= 0 && <p className="error-text">{error}</p>}
         </div>
-        {cooldown > 0 && <p className="error-text">⏳ あと{cooldown.toFixed(1)}秒待ってください</p>}
-        {error && cooldown <= 0 && <p className="error-text">{error}</p>}
-      </div>
+      )}
 
       {phase === "shuffling" && <ShuffleCard label="占い中……" />}
 
@@ -236,6 +273,8 @@ export function GachaPage() {
         </div>
       )}
 
+      {phase === "confirming" && confirmedRarity && <ConfirmOverlay rarity={confirmedRarity} />}
+
       {phase === "single-done" && results[0] && <SingleResultCard result={results[0]} />}
 
       {phase === "ten-shuffling" && <ShuffleCard label="10連抽選中……" />}
@@ -250,6 +289,51 @@ function pickBestRarity(results: SpinResult[]): Rarity {
     if (results.some((res) => res.rarity === r)) return r;
   }
   return "N";
+}
+
+function ConfirmOverlay({ rarity }: { rarity: Rarity }) {
+  const tier = confirmTierFor(rarity);
+  return (
+    <div className={`panel gacha-confirm gacha-confirm-${tier}`} style={rarityStyle(rarity)}>
+      {(tier === "plain" || tier === "ssr") && <div className="gacha-confirm-rays" />}
+
+      {tier === "ur" && (
+        <>
+          <div className="confirm-shock" />
+          <div className="confirm-shock confirm-shock-2" />
+          <div className="confirm-shock confirm-shock-3" />
+        </>
+      )}
+
+      {tier === "mur" && <div className="confirm-holo" />}
+
+      {tier === "kmr" && (
+        <>
+          <div className="confirm-ring confirm-ring-cw" />
+          <div className="confirm-ring confirm-ring-ccw" />
+        </>
+      )}
+
+      {tier === "ltd" && (
+        <div className="confirm-confetti">
+          {Array.from({ length: 14 }).map((_, i) => (
+            <span
+              key={i}
+              className="confetti-piece"
+              style={{ "--angle": `${(360 / 14) * i}deg`, "--d": `${(i % 5) * 60}ms` } as CSSProperties}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="gacha-confirm-text">
+        <div style={{ transform: "scale(1.7)", marginBottom: "0.7rem" }}>
+          <RarityTag rarity={rarity} />
+        </div>
+        <div className="gacha-confirm-label">{confirmLabelFor(tier)}</div>
+      </div>
+    </div>
+  );
 }
 
 function ShuffleCard({ label }: { label: string }) {
