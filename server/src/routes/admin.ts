@@ -1,8 +1,23 @@
 import { Router } from "express";
 import { z } from "zod";
 import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
+import { applyCustomFeature, applyCustomItem, removeCustomFeature, removeCustomItem } from "../lib/gameContent";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, requireAuth } from "../middleware/auth";
+
+const ITEM_EFFECTS = [
+  "heal",
+  "attack_multiplier",
+  "invincible_1",
+  "invincible_n",
+  "priority_attack",
+  "shield_partial_1",
+  "enemy_atk_down",
+  "poison",
+  "nuke_and_full_heal",
+  "extra_turn",
+] as const;
+const ITEM_TIERS = ["shop", "common", "uncommon", "rare", "legendary"] as const;
 
 export const adminRouter = Router();
 
@@ -150,4 +165,99 @@ adminRouter.patch("/limited-gacha/:key", async (req, res) => {
     data: { active: parsed.data.active },
   });
   res.json({ banner: updated });
+});
+
+// ===== 独自アイテム =====
+
+adminRouter.get("/custom-items", async (_req, res) => {
+  const items = await prisma.customItem.findMany({ orderBy: { createdAt: "desc" } });
+  res.json({ items });
+});
+
+const createCustomItemSchema = z.object({
+  key: z
+    .string()
+    .min(1)
+    .max(40)
+    .regex(/^[a-z0-9_]+$/, "半角英数字とアンダースコアのみ使えます。"),
+  name: z.string().min(1).max(30),
+  emoji: z.string().min(1).max(10),
+  price: z.coerce.number().int().min(1).max(1_000_000).optional(),
+  purchasable: z.boolean(),
+  tier: z.enum(ITEM_TIERS),
+  description: z.string().min(1).max(200),
+  effect: z.enum(ITEM_EFFECTS),
+  value: z.coerce.number(),
+});
+
+adminRouter.post("/custom-items", async (req, res) => {
+  const parsed = createCustomItemSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
+  const data = parsed.data;
+
+  if (ITEMS[data.key]) return res.status(400).json({ error: "そのキーはすでに使われています。" });
+
+  const created = await prisma.customItem.create({
+    data: { ...data, price: data.purchasable ? data.price ?? null : null },
+  });
+  applyCustomItem(created);
+  res.status(201).json({ item: created });
+});
+
+adminRouter.delete("/custom-items/:key", async (req, res) => {
+  const key = req.params.key;
+  const existing = await prisma.customItem.findUnique({ where: { key } });
+  if (!existing) return res.status(404).json({ error: "そのアイテムが見つかりません。" });
+
+  const [heldCount, announcedCount] = await Promise.all([
+    prisma.inventoryItem.count({ where: { itemKey: key, quantity: { gt: 0 } } }),
+    prisma.announcement.count({ where: { itemKey: key } }),
+  ]);
+  if (heldCount > 0 || announcedCount > 0) {
+    return res.status(400).json({ error: "誰かが所持中、またはお知らせで配布済みのため削除できません。" });
+  }
+
+  await prisma.customItem.delete({ where: { key } });
+  removeCustomItem(key);
+  res.status(204).end();
+});
+
+// ===== 独自の趣味(特徴) =====
+
+adminRouter.get("/custom-features", async (_req, res) => {
+  const features = await prisma.customFeature.findMany({ orderBy: { createdAt: "desc" } });
+  res.json({ features });
+});
+
+const createCustomFeatureSchema = z.object({
+  label: z.string().min(1).max(20),
+  hpBonus: z.coerce.number().int().min(-50).max(50).default(0),
+  atkBonus: z.coerce.number().int().min(-50).max(50).default(0),
+  defBonus: z.coerce.number().int().min(-50).max(50).default(0),
+  spdBonus: z.coerce.number().int().min(-50).max(50).default(0),
+  luckBonus: z.coerce.number().int().min(-50).max(50).default(0),
+});
+
+adminRouter.post("/custom-features", async (req, res) => {
+  const parsed = createCustomFeatureSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
+
+  const existing = await prisma.customFeature.findUnique({ where: { label: parsed.data.label } });
+  if (existing) return res.status(400).json({ error: "その趣味はすでに登録されています。" });
+
+  const created = await prisma.customFeature.create({ data: parsed.data });
+  applyCustomFeature(created);
+  res.status(201).json({ feature: created });
+});
+
+adminRouter.delete("/custom-features/:label", async (req, res) => {
+  const label = decodeURIComponent(req.params.label);
+  const existing = await prisma.customFeature.findUnique({ where: { label } });
+  if (!existing) return res.status(404).json({ error: "その趣味が見つかりません。" });
+
+  // 既にこの趣味を持っているキャラクターがいてもfeatureは単なる表示文字列なので、
+  // 削除しても既存キャラの表示は壊れない(ステータスボーナスの恩恵が今後なくなるだけ)。
+  await prisma.customFeature.delete({ where: { label } });
+  removeCustomFeature(label);
+  res.status(204).end();
 });

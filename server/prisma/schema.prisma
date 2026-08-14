@@ -67,6 +67,34 @@ model LimitedGacha {
   createdAt   DateTime @default(now())
 }
 
+// 運営が管理画面から追加した独自アイテム。既存のITEM_EFFECTのいずれかを指定して
+// 挙動を組み立てる(全く新しい効果ロジックはコード変更なしには追加できない)。
+model CustomItem {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  emoji       String
+  price       Int?
+  purchasable Boolean  @default(false)
+  tier        String
+  description String
+  effect      String
+  value       Float
+  createdAt   DateTime @default(now())
+}
+
+// 運営が管理画面から追加した独自の趣味(特徴)。ガチャの特徴抽選プールに追加される。
+model CustomFeature {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  hpBonus   Int      @default(0)
+  atkBonus  Int      @default(0)
+  defBonus  Int      @default(0)
+  spdBonus  Int      @default(0)
+  luckBonus Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 model InventoryItem {
   id       String @id @default(cuid())
   userId   String

@@ -10,6 +10,7 @@ import { announcementsRouter } from "./routes/announcements";
 import { authRouter } from "./routes/auth";
 import { charactersRouter } from "./routes/characters";
 import { gachaRouter } from "./routes/gacha";
+import { loadCustomGameContent } from "./lib/gameContent";
 import { profileRouter } from "./routes/profile";
 import { shopRouter } from "./routes/shop";
 import { usersRouter } from "./routes/users";
@@ -64,6 +65,10 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 const httpServer = createServer(app);
 createSocketServer(httpServer);
 
-httpServer.listen(env.port, () => {
-  console.log(`NEO ORACLE ARCADE server listening on http://localhost:${env.port}`);
-});
+loadCustomGameContent()
+  .catch((err) => console.error("[gameContent] failed to load custom items/features", err))
+  .finally(() => {
+    httpServer.listen(env.port, () => {
+      console.log(`NEO ORACLE ARCADE server listening on http://localhost:${env.port}`);
+    });
+  });

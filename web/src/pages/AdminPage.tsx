@@ -1,6 +1,6 @@
 import { ItemDef, SPECIAL_TYPE_ORDER, SPECIAL_TYPES } from "@identity-slot/game-core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { CSSProperties, FormEvent, useState } from "react";
 import { api, ApiError } from "../lib/api";
 
 interface AdminUser {
@@ -18,6 +18,49 @@ interface LimitedGachaBanner {
   cost: number;
   active: boolean;
 }
+
+interface CustomItemRow {
+  key: string;
+  name: string;
+  emoji: string;
+  price: number | null;
+  purchasable: boolean;
+  tier: string;
+  description: string;
+  effect: string;
+  value: number;
+}
+
+interface CustomFeatureRow {
+  label: string;
+  hpBonus: number;
+  atkBonus: number;
+  defBonus: number;
+  spdBonus: number;
+  luckBonus: number;
+}
+
+const inputStyle: CSSProperties = {
+  background: "var(--bg-panel-raised)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: "0.5rem 0.6rem",
+  color: "var(--text)",
+};
+
+const ITEM_TIER_OPTIONS = ["shop", "common", "uncommon", "rare", "legendary"] as const;
+const ITEM_EFFECT_OPTIONS = [
+  { value: "heal", label: "回復(自分のHPをvalue割合回復)" },
+  { value: "attack_multiplier", label: "攻撃倍率(valueの倍率で攻撃)" },
+  { value: "invincible_1", label: "1ラウンド無敵" },
+  { value: "invincible_n", label: "valueラウンドの間無敵" },
+  { value: "priority_attack", label: "先制攻撃(valueの倍率)" },
+  { value: "shield_partial_1", label: "1ラウンド被ダメージ軽減(valueの割合)" },
+  { value: "enemy_atk_down", label: "相手の攻撃力低下(valueラウンド)" },
+  { value: "poison", label: "毒状態にする(valueラウンド)" },
+  { value: "nuke_and_full_heal", label: "大ダメージ(valueの倍率)+全回復" },
+  { value: "extra_turn", label: "追加行動" },
+] as const;
 
 export function AdminPage() {
   const [query, setQuery] = useState("");
@@ -67,6 +110,122 @@ export function AdminPage() {
     queryFn: () => api.get<{ banners: LimitedGachaBanner[] }>("/admin/limited-gacha"),
   });
   const [limitedGachaBusy, setLimitedGachaBusy] = useState<string | null>(null);
+
+  const { data: customItemsData } = useQuery({
+    queryKey: ["admin-custom-items"],
+    queryFn: () => api.get<{ items: CustomItemRow[] }>("/admin/custom-items"),
+  });
+  const [newItemKey, setNewItemKey] = useState("");
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemEmoji, setNewItemEmoji] = useState("");
+  const [newItemPurchasable, setNewItemPurchasable] = useState(false);
+  const [newItemPrice, setNewItemPrice] = useState("150");
+  const [newItemTier, setNewItemTier] = useState<(typeof ITEM_TIER_OPTIONS)[number]>("common");
+  const [newItemDescription, setNewItemDescription] = useState("");
+  const [newItemEffect, setNewItemEffect] = useState<(typeof ITEM_EFFECT_OPTIONS)[number]["value"]>("heal");
+  const [newItemValue, setNewItemValue] = useState("0.3");
+  const [customItemBusy, setCustomItemBusy] = useState(false);
+
+  const { data: customFeaturesData } = useQuery({
+    queryKey: ["admin-custom-features"],
+    queryFn: () => api.get<{ features: CustomFeatureRow[] }>("/admin/custom-features"),
+  });
+  const [newFeatureLabel, setNewFeatureLabel] = useState("");
+  const [newFeatureHp, setNewFeatureHp] = useState("0");
+  const [newFeatureAtk, setNewFeatureAtk] = useState("0");
+  const [newFeatureDef, setNewFeatureDef] = useState("0");
+  const [newFeatureSpd, setNewFeatureSpd] = useState("0");
+  const [newFeatureLuck, setNewFeatureLuck] = useState("0");
+  const [customFeatureBusy, setCustomFeatureBusy] = useState(false);
+
+  async function createCustomItem(e: FormEvent) {
+    e.preventDefault();
+    setCustomItemBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.post("/admin/custom-items", {
+        key: newItemKey,
+        name: newItemName,
+        emoji: newItemEmoji,
+        purchasable: newItemPurchasable,
+        price: newItemPurchasable ? Number(newItemPrice) : undefined,
+        tier: newItemTier,
+        description: newItemDescription,
+        effect: newItemEffect,
+        value: Number(newItemValue),
+      });
+      setNewItemKey("");
+      setNewItemName("");
+      setNewItemEmoji("");
+      setNewItemDescription("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-custom-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-items"] }),
+      ]);
+      setMessage(`✅ アイテム「${newItemName}」を追加しました。`);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "アイテムの追加に失敗しました。");
+    } finally {
+      setCustomItemBusy(false);
+    }
+  }
+
+  async function deleteCustomItem(key: string) {
+    setCustomItemBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/custom-items/${key}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-custom-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-items"] }),
+      ]);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setCustomItemBusy(false);
+    }
+  }
+
+  async function createCustomFeature(e: FormEvent) {
+    e.preventDefault();
+    setCustomFeatureBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.post("/admin/custom-features", {
+        label: newFeatureLabel,
+        hpBonus: Number(newFeatureHp),
+        atkBonus: Number(newFeatureAtk),
+        defBonus: Number(newFeatureDef),
+        spdBonus: Number(newFeatureSpd),
+        luckBonus: Number(newFeatureLuck),
+      });
+      setNewFeatureLabel("");
+      setNewFeatureHp("0");
+      setNewFeatureAtk("0");
+      setNewFeatureDef("0");
+      setNewFeatureSpd("0");
+      setNewFeatureLuck("0");
+      await queryClient.invalidateQueries({ queryKey: ["admin-custom-features"] });
+      setMessage(`✅ 趣味「${newFeatureLabel}」を追加しました。`);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "趣味の追加に失敗しました。");
+    } finally {
+      setCustomFeatureBusy(false);
+    }
+  }
+
+  async function deleteCustomFeature(label: string) {
+    setCustomFeatureBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/custom-features/${encodeURIComponent(label)}`);
+      await queryClient.invalidateQueries({ queryKey: ["admin-custom-features"] });
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setCustomFeatureBusy(false);
+    }
+  }
 
   async function toggleLimitedGacha(banner: LimitedGachaBanner) {
     setLimitedGachaBusy(banner.key);
@@ -771,6 +930,190 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      <form className="panel" onSubmit={createCustomItem}>
+        <h3>🎒 独自アイテム管理</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          コード変更・再デプロイなしでアイテムを追加できます。効果は既存の種類から選んでください。
+        </p>
+        <div className="result-grid">
+          {customItemsData?.items.map((item) => (
+            <div className="card" key={item.key}>
+              <div style={{ fontWeight: 700 }}>
+                {item.emoji} {item.name}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>{item.description}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.3rem 0" }}>
+                {item.tier} / {item.effect}={item.value}
+                {item.purchasable && ` / 💰${item.price}`}
+              </div>
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)" }}
+                disabled={customItemBusy}
+                onClick={() => deleteCustomItem(item.key)}
+              >
+                削除
+              </button>
+            </div>
+          ))}
+          {customItemsData?.items.length === 0 && (
+            <p style={{ color: "var(--text-dim)" }}>独自アイテムはまだありません。</p>
+          )}
+        </div>
+
+        <div className="btn-row" style={{ marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={newItemKey}
+            onChange={(e) => setNewItemKey(e.target.value)}
+            placeholder="キー(半角英数字、例: lucky_charm)"
+            style={inputStyle}
+          />
+          <input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="名前" style={inputStyle} />
+          <input
+            value={newItemEmoji}
+            onChange={(e) => setNewItemEmoji(e.target.value)}
+            placeholder="絵文字"
+            style={{ ...inputStyle, width: 70 }}
+          />
+          <select value={newItemTier} onChange={(e) => setNewItemTier(e.target.value as typeof newItemTier)} style={inputStyle}>
+            {ITEM_TIER_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="btn-row" style={{ marginTop: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          <select
+            value={newItemEffect}
+            onChange={(e) => setNewItemEffect(e.target.value as typeof newItemEffect)}
+            style={{ ...inputStyle, minWidth: 260 }}
+          >
+            {ITEM_EFFECT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={newItemValue}
+            onChange={(e) => setNewItemValue(e.target.value)}
+            placeholder="value(倍率/割合/ラウンド数)"
+            style={{ ...inputStyle, width: 100 }}
+          />
+        </div>
+        <div className="btn-row" style={{ marginTop: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            <input
+              type="checkbox"
+              checked={newItemPurchasable}
+              onChange={(e) => setNewItemPurchasable(e.target.checked)}
+            />
+            ショップで購入可能にする
+          </label>
+          {newItemPurchasable && (
+            <input
+              value={newItemPrice}
+              onChange={(e) => setNewItemPrice(e.target.value)}
+              placeholder="価格"
+              style={{ ...inputStyle, width: 100 }}
+            />
+          )}
+        </div>
+        <textarea
+          value={newItemDescription}
+          onChange={(e) => setNewItemDescription(e.target.value)}
+          placeholder="説明文"
+          rows={2}
+          style={{ ...inputStyle, width: "100%", marginTop: "0.6rem", resize: "vertical" }}
+        />
+        <button
+          className="btn btn-primary"
+          type="submit"
+          style={{ marginTop: "0.8rem" }}
+          disabled={customItemBusy || !newItemKey.trim() || !newItemName.trim() || !newItemEmoji.trim() || !newItemDescription.trim()}
+        >
+          アイテムを追加
+        </button>
+      </form>
+
+      <form className="panel" onSubmit={createCustomFeature}>
+        <h3>🎭 独自の趣味(特徴)管理</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          ガチャで生成されるキャラクターの「趣味」を追加できます。ステータスボーナスは任意です。
+        </p>
+        <div className="result-grid">
+          {customFeaturesData?.features.map((f) => (
+            <div className="card" key={f.label}>
+              <div style={{ fontWeight: 700 }}>🎭{f.label}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
+                HP{f.hpBonus >= 0 ? "+" : ""}
+                {f.hpBonus} ATK{f.atkBonus >= 0 ? "+" : ""}
+                {f.atkBonus} DEF{f.defBonus >= 0 ? "+" : ""}
+                {f.defBonus} SPD{f.spdBonus >= 0 ? "+" : ""}
+                {f.spdBonus} 運{f.luckBonus >= 0 ? "+" : ""}
+                {f.luckBonus}
+              </div>
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)", marginTop: "0.4rem" }}
+                disabled={customFeatureBusy}
+                onClick={() => deleteCustomFeature(f.label)}
+              >
+                削除
+              </button>
+            </div>
+          ))}
+          {customFeaturesData?.features.length === 0 && (
+            <p style={{ color: "var(--text-dim)" }}>独自の趣味はまだありません。</p>
+          )}
+        </div>
+
+        <div className="btn-row" style={{ marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={newFeatureLabel}
+            onChange={(e) => setNewFeatureLabel(e.target.value)}
+            placeholder="趣味(例: 釣り好き)"
+            style={inputStyle}
+          />
+          <input value={newFeatureHp} onChange={(e) => setNewFeatureHp(e.target.value)} placeholder="HP" style={{ ...inputStyle, width: 70 }} />
+          <input
+            value={newFeatureAtk}
+            onChange={(e) => setNewFeatureAtk(e.target.value)}
+            placeholder="ATK"
+            style={{ ...inputStyle, width: 70 }}
+          />
+          <input
+            value={newFeatureDef}
+            onChange={(e) => setNewFeatureDef(e.target.value)}
+            placeholder="DEF"
+            style={{ ...inputStyle, width: 70 }}
+          />
+          <input
+            value={newFeatureSpd}
+            onChange={(e) => setNewFeatureSpd(e.target.value)}
+            placeholder="SPD"
+            style={{ ...inputStyle, width: 70 }}
+          />
+          <input
+            value={newFeatureLuck}
+            onChange={(e) => setNewFeatureLuck(e.target.value)}
+            placeholder="運"
+            style={{ ...inputStyle, width: 70 }}
+          />
+        </div>
+        <button
+          className="btn btn-primary"
+          type="submit"
+          style={{ marginTop: "0.8rem" }}
+          disabled={customFeatureBusy || !newFeatureLabel.trim()}
+        >
+          趣味を追加
+        </button>
+      </form>
     </div>
   );
 }
