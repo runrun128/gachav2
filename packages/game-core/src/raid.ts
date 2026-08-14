@@ -66,7 +66,7 @@ export interface BossDef {
 export const BOSSES: Record<BossKey, BossDef> = {
   gehenna: {
     key: "gehenna",
-    name: "業火の悪魔ゲヘナ",
+    name: "業火の悪魔MUR&KMR",
     emoji: "🔥",
     color: "#E74C3C",
     hp: 520,
@@ -85,7 +85,7 @@ export const BOSSES: Record<BossKey, BossDef> = {
   },
   lilith: {
     key: "lilith",
-    name: "氷結の女王リリス",
+    name: "氷結の女王ピンキー姉貴",
     emoji: "🧊",
     color: "#3498DB",
     hp: 460,
@@ -105,7 +105,7 @@ export const BOSSES: Record<BossKey, BossDef> = {
   },
   varga: {
     key: "varga",
-    name: "深淵の竜王ヴァルガ",
+    name: "深淵の竜王田所浩二",
     emoji: "🐉",
     color: "#8E44AD",
     hp: 650,
@@ -126,7 +126,7 @@ export const BOSSES: Record<BossKey, BossDef> = {
   },
   voltex: {
     key: "voltex",
-    name: "暴風の魔人ヴォルテクス",
+    name: "暴風の魔人サイクロップス先輩",
     emoji: "🌪️",
     color: "#1ABC9C",
     hp: 500,
@@ -145,7 +145,7 @@ export const BOSSES: Record<BossKey, BossDef> = {
   },
   arachne: {
     key: "arachne",
-    name: "深淵の蜘蛛女王アラクネ",
+    name: "深淵の蜘蛛王唐澤貴洋",
     emoji: "🕷️",
     color: "#6C3483",
     hp: 480,
@@ -162,7 +162,7 @@ export const BOSSES: Record<BossKey, BossDef> = {
   },
   shade: {
     key: "shade",
-    name: "闇の魔導士シェイド",
+    name: "闇の魔導士イクシー先輩",
     emoji: "🌑",
     color: "#2C2C54",
     hp: 550,
