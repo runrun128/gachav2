@@ -12,6 +12,21 @@ import { requireAuth } from "../middleware/auth";
 
 export const charactersRouter = Router();
 
+// 育成/とくぎ変更の連打防止(メモリ上のみ・再起動でリセット。ガチャと同じ方式)。
+// 同時に複数リクエストが飛んでも下のupdateMany側で二重処理は防げるが、
+// それ以前にリクエスト数そのものを絞ってDB接続を使い切らせないための保険。
+const TRAIN_COOLDOWN_MS = 300;
+const lastTrainAt = new Map<string, number>();
+
+function checkTrainCooldown(userId: string): string | null {
+  const now = Date.now();
+  const last = lastTrainAt.get(userId) ?? 0;
+  const remaining = TRAIN_COOLDOWN_MS - (now - last);
+  if (remaining > 0) return `連続で操作できません。あと${(remaining / 1000).toFixed(1)}秒待ってください。`;
+  lastTrainAt.set(userId, now);
+  return null;
+}
+
 // バトル/レイドのキャラクター選択用。/history と違いページングで切り捨てず、
 // 所持キャラクター全件を返す(選べるキャラが「直近のものだけ」にならないようにするため)。
 charactersRouter.get("/characters/mine", requireAuth, async (req, res) => {
@@ -24,6 +39,9 @@ charactersRouter.get("/characters/mine", requireAuth, async (req, res) => {
 
 charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => {
   const userId = req.user!.id;
+  const cooldownError = checkTrainCooldown(userId);
+  if (cooldownError) return res.status(429).json({ error: cooldownError });
+
   const character = await prisma.character.findFirst({ where: { id: req.params.id, userId } });
   if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
 
@@ -38,13 +56,36 @@ charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => 
     return res.status(400).json({ error: `コインが足りません。(所持金: ${user.money} / 必要: ${cost})` });
   }
 
-  const [, updatedCharacter] = await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { money: { decrement: cost } } }),
-    prisma.character.update({ where: { id: character.id }, data: { level: { increment: 1 } } }),
-  ]);
-
-  const updatedUser = await prisma.user.findUnique({ where: { id: userId } });
-  res.json({ character: updatedCharacter, money: updatedUser!.money });
+  // 2つのキャラを交互に連打する等で同じキャラに対するリクエストが競合しても、
+  // 「読み取った時点のlevel/moneyのままである」という条件付きのupdateManyにすることで
+  // 二重にレベル/課金が進んでしまわないようにする(競合した側は更新件数0件で失敗する)。
+  // updateManyは対象0件でもエラーを投げないため、片方だけ成功して不整合にならないよう
+  // インタラクティブトランザクション内で件数を確認し、条件を満たさなければ例外を投げてロールバックする。
+  try {
+    const [updatedCharacter, updatedUser] = await prisma.$transaction(async (tx) => {
+      const userUpdate = await tx.user.updateMany({
+        where: { id: userId, money: { gte: cost } },
+        data: { money: { decrement: cost } },
+      });
+      const characterUpdate = await tx.character.updateMany({
+        where: { id: character.id, userId, level: character.level },
+        data: { level: { increment: 1 } },
+      });
+      if (userUpdate.count === 0 || characterUpdate.count === 0) {
+        throw new Error("TRAIN_CONFLICT");
+      }
+      return Promise.all([
+        tx.character.findUniqueOrThrow({ where: { id: character.id } }),
+        tx.user.findUniqueOrThrow({ where: { id: userId } }),
+      ]);
+    });
+    res.json({ character: updatedCharacter, money: updatedUser.money });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TRAIN_CONFLICT") {
+      return res.status(409).json({ error: "他の操作と競合しました。もう一度お試しください。" });
+    }
+    throw err;
+  }
 });
 
 const setSpecialSchema = z.object({
@@ -56,6 +97,9 @@ charactersRouter.post("/characters/:id/special", requireAuth, async (req, res) =
   if (!parsed.success) return res.status(400).json({ error: "とくぎ属性が不正です。" });
 
   const userId = req.user!.id;
+  const cooldownError = checkTrainCooldown(userId);
+  if (cooldownError) return res.status(429).json({ error: cooldownError });
+
   const character = await prisma.character.findFirst({ where: { id: req.params.id, userId } });
   if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
   if (!isSecretFeatureRarity(character.rarity as any)) {
@@ -73,11 +117,29 @@ charactersRouter.post("/characters/:id/special", requireAuth, async (req, res) =
       .json({ error: `コインが足りません。(所持金: ${user.money} / 必要: ${SETSPECIAL_COST})` });
   }
 
-  const [, updatedCharacter] = await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { money: { decrement: SETSPECIAL_COST } } }),
-    prisma.character.update({ where: { id: character.id }, data: { specialType: parsed.data.specialType } }),
-  ]);
-
-  const updatedUser = await prisma.user.findUnique({ where: { id: userId } });
-  res.json({ character: updatedCharacter, money: updatedUser!.money });
+  try {
+    const [updatedCharacter, updatedUser] = await prisma.$transaction(async (tx) => {
+      const userUpdate = await tx.user.updateMany({
+        where: { id: userId, money: { gte: SETSPECIAL_COST } },
+        data: { money: { decrement: SETSPECIAL_COST } },
+      });
+      const characterUpdate = await tx.character.updateMany({
+        where: { id: character.id, userId, specialType: character.specialType },
+        data: { specialType: parsed.data.specialType },
+      });
+      if (userUpdate.count === 0 || characterUpdate.count === 0) {
+        throw new Error("TRAIN_CONFLICT");
+      }
+      return Promise.all([
+        tx.character.findUniqueOrThrow({ where: { id: character.id } }),
+        tx.user.findUniqueOrThrow({ where: { id: userId } }),
+      ]);
+    });
+    res.json({ character: updatedCharacter, money: updatedUser.money });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TRAIN_CONFLICT") {
+      return res.status(409).json({ error: "他の操作と競合しました。もう一度お試しください。" });
+    }
+    throw err;
+  }
 });

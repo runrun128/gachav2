@@ -31,7 +31,9 @@ interface CharacterRow {
 export function TrainPage() {
   const { refresh } = useAuth();
   const queryClient = useQueryClient();
-  const [busyId, setBusyId] = useState<string | null>(null);
+  // キャラAとキャラBを交互に連打するとそれぞれのボタンが独立に有効になってしまい、
+  // 実質的に同時に何件もリクエストを送れてしまうため、キャラ単位ではなく画面全体で1つだけbusyにする。
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, SpecialType>>({});
 
@@ -46,7 +48,8 @@ export function TrainPage() {
     .filter((g) => g.items.length > 0);
 
   async function train(id: string) {
-    setBusyId(id);
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
       await api.post(`/characters/${id}/train`);
@@ -54,14 +57,15 @@ export function TrainPage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "育成に失敗しました。");
     } finally {
-      setBusyId(null);
+      setBusy(false);
     }
   }
 
   async function changeSpecial(id: string) {
+    if (busy) return;
     const specialType = selected[id];
     if (!specialType) return;
-    setBusyId(id);
+    setBusy(true);
     setError(null);
     try {
       await api.post(`/characters/${id}/special`, { specialType });
@@ -69,7 +73,7 @@ export function TrainPage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "とくぎ変更に失敗しました。");
     } finally {
-      setBusyId(null);
+      setBusy(false);
     }
   }
 
@@ -102,11 +106,7 @@ export function TrainPage() {
                   {c.age}歳{c.gender}
                 </div>
                 <div className="btn-row" style={{ marginTop: "0.6rem" }}>
-                  <button
-                    className="btn"
-                    disabled={busyId === c.id || c.level >= MAX_TRAIN_LEVEL}
-                    onClick={() => train(c.id)}
-                  >
+                  <button className="btn" disabled={busy || c.level >= MAX_TRAIN_LEVEL} onClick={() => train(c.id)}>
                     {c.level >= MAX_TRAIN_LEVEL ? "最大レベル" : `育成(${trainCost(c.level)}コイン)`}
                   </button>
                 </div>
@@ -128,11 +128,7 @@ export function TrainPage() {
                             </option>
                           ))}
                         </select>
-                        <button
-                          className="btn"
-                          disabled={busyId === c.id || isSameAsCurrent}
-                          onClick={() => changeSpecial(c.id)}
-                        >
+                        <button className="btn" disabled={busy || isSameAsCurrent} onClick={() => changeSpecial(c.id)}>
                           {isSameAsCurrent ? "現在の属性です" : `変更(${SETSPECIAL_COST})`}
                         </button>
                       </div>

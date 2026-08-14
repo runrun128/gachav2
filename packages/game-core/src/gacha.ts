@@ -8,7 +8,7 @@ export const GACHA_SR_COST = 500;
 export const GACHA_SSR_COST = 1800;
 export const GACHA_COOLDOWN_SECONDS = 4;
 
-export const MAX_TRAIN_LEVEL = 10;
+export const MAX_TRAIN_LEVEL = 100;
 export const TRAIN_BASE_COST = 100;
 export const LEVEL_STAT_BONUS_PER_LEVEL = 0.05;
 
