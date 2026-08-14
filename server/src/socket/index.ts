@@ -21,6 +21,19 @@ function parseCookies(header?: string): Record<string, string> {
   return result;
 }
 
+// アカウント削除時にバトル/レイド中のユーザーを後片付けするため、REST側からも
+// 同じマネージャーインスタンスを参照できるようにする(シングルプロセス前提)。
+let battleManagerInstance: BattleManager | null = null;
+let raidManagerInstance: RaidManager | null = null;
+
+export function getBattleManager(): BattleManager | null {
+  return battleManagerInstance;
+}
+
+export function getRaidManager(): RaidManager | null {
+  return raidManagerInstance;
+}
+
 export function createSocketServer(httpServer: HTTPServer) {
   const io = new IOServer(httpServer, {
     cors: { origin: env.webOrigin, credentials: true },
@@ -37,6 +50,8 @@ export function createSocketServer(httpServer: HTTPServer) {
 
   const battleManager = new BattleManager(io);
   const raidManager = new RaidManager(io);
+  battleManagerInstance = battleManager;
+  raidManagerInstance = raidManager;
 
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId as string;

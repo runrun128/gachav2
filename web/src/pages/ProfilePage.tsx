@@ -15,7 +15,7 @@ interface ProfileData {
 }
 
 export function ProfilePage() {
-  const { user, promote } = useAuth();
+  const { user, promote, deleteAccount } = useAuth();
   const { data, isLoading, error } = useQuery({
     queryKey: ["profile"],
     queryFn: () => api.get<ProfileData>("/profile"),
@@ -24,6 +24,11 @@ export function ProfilePage() {
   const [code, setCode] = useState("");
   const [promoteError, setPromoteError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [deletePassword, setDeletePassword] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function onPromote(e: FormEvent) {
     e.preventDefault();
@@ -36,6 +41,24 @@ export function ProfilePage() {
       setPromoteError(err instanceof ApiError ? err.message : "昇格に失敗しました。");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onDeleteAccount(e: FormEvent) {
+    e.preventDefault();
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteAccount(deletePassword);
+      // 成功後はuserがnullになり、アプリ側のルーティングガードでログイン画面に戻る
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "削除に失敗しました。");
+      setConfirmingDelete(false);
+      setDeleting(false);
     }
   }
 
@@ -90,6 +113,40 @@ export function ProfilePage() {
           {promoteError && <p className="error-text">{promoteError}</p>}
         </form>
       )}
+
+      <form className="panel" onSubmit={onDeleteAccount}>
+        <h3>⚠️ アカウント削除</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          アカウントとキャラクター・アイテム・コインなど全てのデータが完全に削除されます。この操作は取り消せません。
+        </p>
+        <div className="btn-row" style={{ alignItems: "center" }}>
+          <input
+            type="password"
+            value={deletePassword}
+            onChange={(e) => {
+              setDeletePassword(e.target.value);
+              setConfirmingDelete(false);
+            }}
+            placeholder="確認のためパスワードを入力"
+            style={{
+              background: "var(--bg-panel-raised)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "0.6rem 0.75rem",
+              color: "var(--text)",
+            }}
+          />
+          <button
+            className="btn"
+            type="submit"
+            style={{ color: "var(--danger)" }}
+            disabled={deleting || !deletePassword}
+          >
+            {confirmingDelete ? "本当に削除しますか?もう一度押す" : "アカウントを削除する"}
+          </button>
+        </div>
+        {deleteError && <p className="error-text">{deleteError}</p>}
+      </form>
     </div>
   );
 }

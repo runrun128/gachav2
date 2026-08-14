@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
 import { STARTING_MONEY } from "@identity-slot/game-core";
+import { deleteUserAccount } from "../lib/accountDeletion";
 import { env } from "../lib/env";
 import { signToken } from "../lib/jwt";
 import { prisma } from "../lib/prisma";
@@ -98,6 +99,25 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(401).json({ error: "ログインが必要です。" });
   res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
+});
+
+const deleteAccountSchema = z.object({ password: z.string().min(1) });
+
+authRouter.delete("/me", requireAuth, async (req, res) => {
+  const parsed = deleteAccountSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "パスワードを入力してください。" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return res.status(401).json({ error: "ログインが必要です。" });
+  if (!(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+    return res.status(401).json({ error: "パスワードが正しくありません。" });
+  }
+
+  await deleteUserAccount(user.id);
+
+  const { maxAge: _maxAge, ...clearOptions } = cookieOptions;
+  res.clearCookie(env.cookieName, clearOptions);
+  res.status(204).end();
 });
 
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30分

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
+import { deleteUserAccount } from "../lib/accountDeletion";
 import { applyCustomFeature, applyCustomItem, removeCustomFeature, removeCustomItem } from "../lib/gameContent";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, requireAuth } from "../middleware/auth";
@@ -48,6 +49,19 @@ adminRouter.get("/users", async (req, res) => {
   });
 
   res.json({ users });
+});
+
+adminRouter.delete("/users/:id", async (req, res) => {
+  const targetId = req.params.id;
+  if (targetId === req.user!.id) {
+    return res.status(400).json({ error: "自分自身はプロフィール画面から削除してください。" });
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target) return res.status(404).json({ error: "対象のユーザーが見つかりません。" });
+
+  await deleteUserAccount(targetId);
+  res.status(204).end();
 });
 
 const giveMoneySchema = z.object({

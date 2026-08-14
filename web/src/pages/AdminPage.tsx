@@ -349,6 +349,29 @@ export function AdminPage() {
     setUsers((list) => list.map((u) => (u.id === patch.id ? { ...u, ...patch } : u)));
   }
 
+  const [confirmingDeleteUser, setConfirmingDeleteUser] = useState<string | null>(null);
+  const [deleteUserBusy, setDeleteUserBusy] = useState(false);
+
+  async function deleteSelectedUser(target: AdminUser) {
+    if (confirmingDeleteUser !== target.id) {
+      setConfirmingDeleteUser(target.id);
+      return;
+    }
+    setDeleteUserBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/users/${target.id}`);
+      setUsers((list) => list.filter((u) => u.id !== target.id));
+      setSelected(null);
+      setConfirmingDeleteUser(null);
+      setMessage(`✅ ${target.displayName} を削除しました。`);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setDeleteUserBusy(false);
+    }
+  }
+
   async function giveMoney(e: FormEvent) {
     e.preventDefault();
     if (!selected) return;
@@ -715,6 +738,18 @@ export function AdminPage() {
               </button>
             </div>
           </form>
+
+          <div className="btn-row" style={{ marginTop: "1rem", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ color: "var(--danger)" }}
+              disabled={deleteUserBusy}
+              onClick={() => deleteSelectedUser(selected)}
+            >
+              {confirmingDeleteUser === selected.id ? "本当に削除しますか?もう一度押す" : "🗑️ このユーザーを削除"}
+            </button>
+          </div>
         </div>
       )}
 
