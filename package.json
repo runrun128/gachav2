@@ -1,0 +1,17 @@
+{
+  "name": "identity-slot-web",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "server",
+    "web",
+    "packages/game-core"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w packages/game-core && npm run build -w server && npm run build -w web",
+    "prisma:migrate": "npm run prisma:migrate -w server",
+    "prisma:studio": "npm run prisma:studio -w server"
+  }
+}
