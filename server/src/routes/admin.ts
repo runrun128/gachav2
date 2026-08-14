@@ -130,3 +130,24 @@ adminRouter.post("/broadcast-item", async (req, res) => {
 
   res.json({ recipientCount: users.length });
 });
+
+adminRouter.get("/limited-gacha", async (_req, res) => {
+  const banners = await prisma.limitedGacha.findMany({ orderBy: { createdAt: "desc" } });
+  res.json({ banners });
+});
+
+const toggleLimitedGachaSchema = z.object({ active: z.boolean() });
+
+adminRouter.patch("/limited-gacha/:key", async (req, res) => {
+  const parsed = toggleLimitedGachaSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "入力内容が不正です。" });
+
+  const banner = await prisma.limitedGacha.findUnique({ where: { key: req.params.key } });
+  if (!banner) return res.status(404).json({ error: "そのガチャが見つかりません。" });
+
+  const updated = await prisma.limitedGacha.update({
+    where: { key: req.params.key },
+    data: { active: parsed.data.active },
+  });
+  res.json({ banner: updated });
+});

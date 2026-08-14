@@ -1,4 +1,4 @@
-export type Rarity = "N" | "R" | "SR" | "SSR" | "UR" | "MUR" | "KMR";
+export type Rarity = "N" | "R" | "SR" | "SSR" | "UR" | "MUR" | "KMR" | "LTD";
 
 export interface RarityInfo {
   name: string;
@@ -17,14 +17,17 @@ export const RARITIES: Record<Rarity, RarityInfo> = {
   // 運営限定ランク。ガチャの抽選対象には一切含まれず(weight: 0)、運営が直接付与した場合のみ入手できる。
   // SSR(#F1C40F)と混同しないよう、他のどのランクとも異なるマゼンタ系の色にしている。
   KMR: { name: "完璧マスターランク", weight: 0, color: "#FF2E9A", emoji: "⭐" },
+  // 期間限定ガチャ専用ランク。通常ガチャの抽選対象には含まれず(weight: 0)、
+  // 開催中の期間限定ガチャからのみ入手できる。
+  LTD: { name: "期間限定記念ランク", weight: 0, color: "#FF9500", emoji: "🎉" },
 };
 
-export const RARITY_ORDER: Rarity[] = ["N", "R", "SR", "SSR", "UR", "MUR", "KMR"];
+export const RARITY_ORDER: Rarity[] = ["N", "R", "SR", "SSR", "UR", "MUR", "KMR", "LTD"];
 
 export function rarityIndex(rarity: Rarity): number {
   return RARITY_ORDER.indexOf(rarity);
 }
 
 export function isSecretFeatureRarity(rarity: Rarity): boolean {
-  return rarity === "SSR" || rarity === "UR" || rarity === "MUR" || rarity === "KMR";
+  return rarity === "SSR" || rarity === "UR" || rarity === "MUR" || rarity === "KMR" || rarity === "LTD";
 }

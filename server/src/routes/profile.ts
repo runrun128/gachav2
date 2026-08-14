@@ -13,7 +13,7 @@ async function computeRaritySummary(userId: string) {
     _count: { _all: true },
   });
 
-  const rarityCounts: Record<Rarity, number> = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0, MUR: 0, KMR: 0 };
+  const rarityCounts: Record<Rarity, number> = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0, MUR: 0, KMR: 0, LTD: 0 };
   let totalSpins = 0;
   let bestRarity: Rarity = "N";
 
@@ -43,7 +43,7 @@ profileRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 const historyQuerySchema = z.object({
-  rarity: z.enum(["N", "R", "SR", "SSR", "UR", "MUR", "KMR"]).optional(),
+  rarity: z.enum(["N", "R", "SR", "SSR", "UR", "MUR", "KMR", "LTD"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });

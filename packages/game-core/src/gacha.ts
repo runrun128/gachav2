@@ -80,6 +80,20 @@ export function spinReels(minRarity?: Rarity, rng: () => number = Math.random): 
   };
 }
 
+// 期間限定ガチャ専用。通常の抽選テーブルは通さず、常にLTDランクの記念キャラを1体確定で生成する。
+export function spinLimitedReels(rng: () => number = Math.random): SpinResult {
+  const secretFeature = pick(SECRET_FEATURES, rng);
+  return {
+    nationality: pick(NATIONALITIES, rng),
+    age: 1 + Math.floor(rng() * 82),
+    gender: pick(GENDERS, rng),
+    feature: pick(FEATURES, rng),
+    rarity: "LTD",
+    secretFeature,
+    specialType: defaultSpecialTypeFor(secretFeature),
+  };
+}
+
 export function trainCost(level: number): number {
   return TRAIN_BASE_COST * level;
 }

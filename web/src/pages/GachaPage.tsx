@@ -8,6 +8,7 @@ import {
   SPECIAL_TYPES,
   SpinResult,
 } from "@identity-slot/game-core";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { RarityTag } from "../components/RarityTag";
 import { api, ApiError } from "../lib/api";
@@ -15,6 +16,13 @@ import { useAuth } from "../lib/auth-context";
 
 type PullType = "single" | "ten" | "sr" | "ssr";
 type Phase = "idle" | "revealing" | "single-done" | "ten-suspense" | "ten-done";
+
+interface LimitedBanner {
+  key: string;
+  name: string;
+  description: string;
+  cost: number;
+}
 
 const REVEAL_LABELS = ["🌍 出身国", "🎂 年齢", "⚧️ 性別", "🎭 特徴"];
 
@@ -26,6 +34,12 @@ export function GachaPage() {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<number | null>(null);
+
+  const { data: limitedData } = useQuery({
+    queryKey: ["limited-gacha"],
+    queryFn: () => api.get<{ banners: LimitedBanner[] }>("/gacha/limited"),
+  });
+  const limitedBanners = limitedData?.banners ?? [];
 
   useEffect(() => {
     return () => {
@@ -41,6 +55,30 @@ export function GachaPage() {
     return () => window.clearInterval(t);
   }, [cooldown > 0]);
 
+  function beginSingleReveal(res: { results: SpinResult[]; money: number }) {
+    setResults(res.results);
+    let s = 0;
+    timerRef.current = window.setInterval(() => {
+      s += 1;
+      setStage(s);
+      if (s >= REVEAL_LABELS.length) {
+        if (timerRef.current) window.clearInterval(timerRef.current);
+        setPhase("single-done");
+      }
+    }, 550);
+  }
+
+  function handleSpinError(err: unknown) {
+    setPhase("idle");
+    if (err instanceof ApiError) {
+      setError(err.message);
+      const match = err.message.match(/あと([\d.]+)秒/);
+      if (match) setCooldown(parseFloat(match[1]));
+    } else {
+      setError("ガチャの実行に失敗しました。");
+    }
+  }
+
   async function spin(type: PullType) {
     if (phase === "revealing" || phase === "ten-suspense") return;
     setError(null);
@@ -51,31 +89,30 @@ export function GachaPage() {
     setPhase(type === "ten" ? "ten-suspense" : "revealing");
     try {
       const res = await api.post<{ results: SpinResult[]; money: number }>("/gacha/spin", { type });
-      setResults(res.results);
       await refresh();
 
       if (type === "ten") {
+        setResults(res.results);
         window.setTimeout(() => setPhase("ten-done"), 1400);
       } else {
-        let s = 0;
-        timerRef.current = window.setInterval(() => {
-          s += 1;
-          setStage(s);
-          if (s >= REVEAL_LABELS.length) {
-            if (timerRef.current) window.clearInterval(timerRef.current);
-            setPhase("single-done");
-          }
-        }, 550);
+        beginSingleReveal(res);
       }
     } catch (err) {
-      setPhase("idle");
-      if (err instanceof ApiError) {
-        setError(err.message);
-        const match = err.message.match(/あと([\d.]+)秒/);
-        if (match) setCooldown(parseFloat(match[1]));
-      } else {
-        setError("ガチャの実行に失敗しました。");
-      }
+      handleSpinError(err);
+    }
+  }
+
+  async function spinLimited(key: string) {
+    if (phase === "revealing" || phase === "ten-suspense") return;
+    setError(null);
+    setStage(0);
+    setPhase("revealing");
+    try {
+      const res = await api.post<{ result: SpinResult; money: number }>(`/gacha/limited/${key}/spin`, {});
+      await refresh();
+      beginSingleReveal({ results: [res.result], money: res.money });
+    } catch (err) {
+      handleSpinError(err);
     }
   }
 
@@ -83,6 +120,16 @@ export function GachaPage() {
 
   return (
     <div>
+      {limitedBanners.map((banner) => (
+        <div className="panel limited-banner" key={banner.key}>
+          <h2 style={{ margin: 0 }}>{banner.name}</h2>
+          <p style={{ color: "var(--text-dim)" }}>{banner.description}</p>
+          <button className="btn btn-primary" disabled={busy || cooldown > 0} onClick={() => spinLimited(banner.key)}>
+            🎉 引く({banner.cost}コイン)
+          </button>
+        </div>
+      ))}
+
       <div className="panel">
         <h1>🎰 ガチャを選択</h1>
         <p style={{ color: "var(--text-dim)" }}>あなたの「もう一つの人生」を抽選します。</p>
@@ -145,6 +192,7 @@ function revealValue(r: SpinResult, stage: number): string {
 }
 
 function glowClassFor(rarity: Rarity): string {
+  if (rarity === "LTD") return "glow-ltd";
   if (rarity === "KMR") return "glow-kmr";
   if (rarity === "MUR") return "glow-mur";
   if (rarity === "UR") return "glow-ur";

@@ -17,6 +17,8 @@ export const RARITY_BASE_STATS: Record<Rarity, RarityBaseStats> = {
   MUR: { hp: 170, atk: 32, def: 23, spd: 25 },
   // 運営限定ランク。MURからの伸びしろは他のランク間と同程度に抑え、バランスを崩さないようにする
   KMR: { hp: 190, atk: 36, def: 26, spd: 28 },
+  // 期間限定ガチャ専用ランク。運営限定(KMR)よりは一段下、MURより一段上の強さにする
+  LTD: { hp: 180, atk: 34, def: 24, spd: 26 },
 };
 
 export const GAMBLE_SUCCESS_CHANCE = 2; // %

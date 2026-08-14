@@ -1,5 +1,5 @@
 import { ItemDef, SPECIAL_TYPE_ORDER, SPECIAL_TYPES } from "@identity-slot/game-core";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { api, ApiError } from "../lib/api";
 
@@ -9,6 +9,14 @@ interface AdminUser {
   displayName: string;
   money: number;
   role: string;
+}
+
+interface LimitedGachaBanner {
+  key: string;
+  name: string;
+  description: string;
+  cost: number;
+  active: boolean;
 }
 
 export function AdminPage() {
@@ -52,6 +60,26 @@ export function AdminPage() {
     queryKey: ["admin-items"],
     queryFn: () => api.get<{ items: ItemDef[] }>("/admin/items"),
   });
+
+  const queryClient = useQueryClient();
+  const { data: limitedGachaData } = useQuery({
+    queryKey: ["admin-limited-gacha"],
+    queryFn: () => api.get<{ banners: LimitedGachaBanner[] }>("/admin/limited-gacha"),
+  });
+  const [limitedGachaBusy, setLimitedGachaBusy] = useState<string | null>(null);
+
+  async function toggleLimitedGacha(banner: LimitedGachaBanner) {
+    setLimitedGachaBusy(banner.key);
+    try {
+      await api.patch(`/admin/limited-gacha/${banner.key}`, { active: !banner.active });
+      await queryClient.invalidateQueries({ queryKey: ["admin-limited-gacha"] });
+      await queryClient.invalidateQueries({ queryKey: ["limited-gacha"] });
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "更新に失敗しました。");
+    } finally {
+      setLimitedGachaBusy(null);
+    }
+  }
 
   async function search(e?: FormEvent) {
     e?.preventDefault();
@@ -714,6 +742,35 @@ export function AdminPage() {
           </button>
         </div>
       </form>
+
+      <div className="panel">
+        <h3>🎉 期間限定ガチャ管理</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          ONにすると即座にガチャ画面に表示され、OFFにすると即座に非表示になります。
+        </p>
+        <div className="result-grid">
+          {limitedGachaData?.banners.map((banner) => (
+            <div className="card" key={banner.key}>
+              <div style={{ fontWeight: 700 }}>{banner.name}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{banner.description}</div>
+              <div style={{ color: "var(--gold)", fontSize: "0.85rem", margin: "0.3rem 0" }}>
+                💰 {banner.cost} コイン
+              </div>
+              <button
+                className="btn"
+                style={{ color: banner.active ? "var(--danger)" : "var(--gold)" }}
+                disabled={limitedGachaBusy === banner.key}
+                onClick={() => toggleLimitedGacha(banner)}
+              >
+                {banner.active ? "🔴 終了する" : "🟢 開始する"}
+              </button>
+            </div>
+          ))}
+          {limitedGachaData?.banners.length === 0 && (
+            <p style={{ color: "var(--text-dim)" }}>期間限定ガチャはまだありません。</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
