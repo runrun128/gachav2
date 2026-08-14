@@ -387,6 +387,230 @@ button.card:focus-visible {
   box-shadow: 0 0 24px rgba(255, 149, 0, 0.25);
 }
 
+/* ===== ガチャ演出 v2: シャッフル〜ステージ公開〜チケットカード ===== */
+
+.gacha-shuffle-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 2.2rem 1rem;
+  perspective: 800px;
+}
+
+.gacha-shuffle-card {
+  width: min(220px, 60vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #2a2a3c 0%, #14141e 100%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  animation: gacha-shuffle 0.32s ease-in-out infinite;
+}
+
+@keyframes gacha-shuffle {
+  0%,
+  100% {
+    transform: rotate(-3deg) scale(1);
+  }
+  50% {
+    transform: rotate(3deg) scale(1.03);
+  }
+}
+
+.stage-reveal-list {
+  text-align: center;
+  padding: 1.6rem 1rem;
+  font-size: 1.1rem;
+  line-height: 2.1;
+}
+
+.stage-flip {
+  display: inline-block;
+  animation: stage-flip-in 0.35s ease-out;
+}
+
+@keyframes stage-flip-in {
+  from {
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+.gacha-flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  z-index: 999;
+  animation: gacha-flash 0.4s ease-out forwards;
+}
+
+@keyframes gacha-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.ticket-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 1.5rem 1.4rem 1.7rem;
+  background: radial-gradient(circle at 25% -10%, color-mix(in srgb, var(--rc, #808080) 35%, transparent) 0%, transparent 55%),
+    linear-gradient(165deg, #1c1c2a 0%, #0c0c13 100%);
+  border: 2px solid var(--rc, #808080);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 30px color-mix(in srgb, var(--rc, #808080) 40%, transparent),
+    0 16px 34px rgba(0, 0, 0, 0.55);
+  animation: ticket-burst-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes ticket-burst-in {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.ticket-card-divider {
+  border-top: 2px dashed rgba(255, 255, 255, 0.14);
+  margin: 0.9rem 0;
+}
+
+.ticket-card-shine::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -70%;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: rotate(18deg);
+  animation: ticket-shine 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ticket-shine {
+  0% {
+    left: -70%;
+  }
+  45%,
+  100% {
+    left: 130%;
+  }
+}
+
+.gacha-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.gacha-option-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.1rem 0.8rem 0.9rem;
+  border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--rc, #d4af37) 55%, var(--border));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--rc, #d4af37) 14%, #1a1a26) 0%, #101018 70%);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.gacha-option-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--rc, #d4af37);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--rc, #d4af37) 35%, transparent);
+}
+
+.gacha-option-card:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.gacha-option-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gacha-option-featured {
+  border-color: var(--rc, #d4af37);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--rc, #d4af37) 30%, transparent);
+}
+
+.gacha-option-badge {
+  position: absolute;
+  top: -0.55rem;
+  right: 0.6rem;
+  background: var(--gold);
+  color: #1a1408;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.gacha-option-icon {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.gacha-option-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.gacha-option-cost {
+  color: var(--gold);
+  font-size: 0.82rem;
+}
+
+.mini-ticket {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 0.75rem 0.7rem;
+  background: radial-gradient(circle at 25% -10%, color-mix(in srgb, var(--rc, #808080) 30%, transparent) 0%, transparent 60%),
+    linear-gradient(165deg, #1c1c2a 0%, #0f0f16 100%);
+  border: 1.5px solid var(--rc, #808080);
+  opacity: 0;
+  animation: mini-ticket-in 0.4s ease-out forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes mini-ticket-in {
+  from {
+    transform: translateY(10px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 @keyframes glow-pulse-ur {
   0%,
   100% {
