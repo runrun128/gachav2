@@ -1,35 +1,35 @@
 import { useState } from "react";
-import { useStaggeredLines } from "../hooks/useStaggeredLines";
 
-/** 最後の「🎬」(ラウンド開始)マーカー以降を「最新ラウンド」として切り出す */
-function splitLatestRound(log: string[]): { history: string[]; latest: string[] } {
-  let markerIndex = -1;
-  for (let i = log.length - 1; i >= 0; i--) {
-    if (log[i].includes("🎬")) {
-      markerIndex = i;
-      break;
-    }
-  }
-  if (markerIndex === -1) return { history: [], latest: log };
-  return { history: log.slice(0, markerIndex), latest: log.slice(markerIndex) };
+/** ラウンド開始マーカーはヘッダー側で表示済みなので、メッセージ欄には出さない */
+function stripRoundMarker(lines: string[]): string[] {
+  return lines.filter((line) => !line.includes("🎬"));
 }
 
-export function BattleLog({ log }: { log: string[] }) {
-  const { history, latest } = splitLatestRound(log);
-  const revealedLatest = useStaggeredLines(latest);
+export function BattleLog({
+  log,
+  visibleLogCount,
+  previousLogCount,
+}: {
+  log: string[];
+  visibleLogCount: number;
+  previousLogCount: number;
+}) {
   const [showHistory, setShowHistory] = useState(false);
+
+  const visible = log.slice(0, visibleLogCount);
+  const currentSegment = stripRoundMarker(log.slice(previousLogCount, visibleLogCount));
+  // 直前の1手にメッセージが無い(ラウンド開始マーカーのみ等)場合は、それまでの最後の行を出し続ける
+  const fallback = currentSegment.length === 0 ? stripRoundMarker(visible).slice(-2) : [];
+  const message = currentSegment.length > 0 ? currentSegment : fallback;
+  const history = visible.slice(0, previousLogCount);
 
   return (
     <div>
-      <div className="battle-log-latest">
-        {revealedLatest.length ? (
-          revealedLatest.map((line, i) => (
-            <div key={i} className="battle-log-line">
-              {line}
-            </div>
-          ))
+      <div className="pokemon-message-box" key={`${previousLogCount}-${visibleLogCount}`}>
+        {message.length ? (
+          message.map((line, i) => <p key={i}>{line}</p>)
         ) : (
-          <span style={{ color: "var(--text-dim)" }}>まだ行動はありません。</span>
+          <p style={{ opacity: 0.6 }}>まだ行動はありません。</p>
         )}
       </div>
 

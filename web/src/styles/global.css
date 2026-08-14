@@ -430,27 +430,40 @@ button.card:focus-visible {
   line-height: 1.7;
 }
 
-.battle-log-latest {
-  background: #0e0e16;
-  border: 1px solid var(--gold);
+/* ポケモンのバトル画面に出てくるメッセージウィンドウを参考にしたデザイン */
+.pokemon-message-box {
+  background: #f8f8f0;
+  color: #1a1a1a;
+  border: 3px solid #1a1a1a;
   border-radius: 10px;
-  padding: 1rem 1.1rem;
+  box-shadow:
+    inset 0 0 0 2px #f8f8f0,
+    inset 0 0 0 4px #4a6ea8,
+    0 4px 0 rgba(0, 0, 0, 0.35);
+  padding: 1rem 1.2rem;
+  font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
   font-size: 1rem;
-  line-height: 1.9;
+  line-height: 1.75;
+  min-height: 3.6em;
+  animation: message-box-in 0.2s ease-out;
 }
 
-.battle-log-line {
-  animation: log-line-in 0.25s ease-out;
+.pokemon-message-box p {
+  margin: 0;
 }
 
-@keyframes log-line-in {
+.pokemon-message-box p + p {
+  margin-top: 0.35rem;
+}
+
+@keyframes message-box-in {
   from {
     opacity: 0;
-    transform: translateX(-6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 

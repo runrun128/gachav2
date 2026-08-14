@@ -139,7 +139,7 @@ export function RaidRoomPage() {
     };
   }, [socket, roomId]);
 
-  const { visibleLogCount, activeStep } = useRoundReplay(state?.log.length ?? 0, state?.roundSteps);
+  const { visibleLogCount, previousLogCount, activeStep } = useRoundReplay(state?.log.length ?? 0, state?.roundSteps);
 
   if (error) {
     return (
@@ -207,6 +207,10 @@ export function RaidRoomPage() {
           {state.phase === "round" && ` — ラウンド ${state.roundNo}`}
         </p>
 
+        {state.phase !== "lobby" && (
+          <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
+        )}
+
         {state.boss && (
           <div style={{ marginTop: "0.75rem" }}>
             <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.3rem" }}>
@@ -221,13 +225,6 @@ export function RaidRoomPage() {
           </div>
         )}
       </div>
-
-      {state.phase !== "lobby" && (
-        <div className="panel">
-          <h3>📜 ログ</h3>
-          <BattleLog log={state.log.slice(0, visibleLogCount)} />
-        </div>
-      )}
 
       {state.phase === "lobby" && (
         <div className="panel">
@@ -457,6 +454,10 @@ function RaidFighterPanel({
         <>
           <div style={{ fontWeight: 700 }}>
             <RarityTag rarity={f.rarity} /> Lv{f.level}
+          </div>
+          <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>
+            {f.nationality}
+            {f.age}歳{f.gender} / 🎭{f.feature}
           </div>
           <div style={{ margin: "0.5rem 0 0.25rem" }}>
             {displayHp <= 0 ? (

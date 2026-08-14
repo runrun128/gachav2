@@ -121,7 +121,7 @@ export function BattleRoomPage() {
     };
   }, [socket, roomId]);
 
-  const { visibleLogCount, activeStep } = useRoundReplay(state?.log.length ?? 0, state?.roundSteps);
+  const { visibleLogCount, previousLogCount, activeStep } = useRoundReplay(state?.log.length ?? 0, state?.roundSteps);
 
   if (error) {
     return (
@@ -182,16 +182,14 @@ export function BattleRoomPage() {
       <div className="panel">
         <h1>⚔️ IDENTITY BATTLE</h1>
         {state.phase === "round" && <p style={{ color: "var(--text-dim)" }}>ラウンド {state.roundNo}</p>}
+        <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
+      </div>
 
+      <div className="panel">
         <div className="btn-row" style={{ alignItems: "stretch" }}>
           <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
           <FighterPanel label="相手" player={opponent} isSelf={false} hpOverride={activeStep?.hp[opponent.userId]} />
         </div>
-      </div>
-
-      <div className="panel">
-        <h3>📜 ログ</h3>
-        <BattleLog log={state.log.slice(0, visibleLogCount)} />
       </div>
 
       {state.phase === "select" && (
