@@ -66,7 +66,7 @@ export interface BossDef {
 export const BOSSES: Record<BossKey, BossDef> = {
   gehenna: {
     key: "gehenna",
-    name: "業火の悪魔ゲヘナ",
+    name: "業火の悪魔MUR&KMR",
     emoji: "🔥",
     color: "#E74C3C",
     hp: 520,
