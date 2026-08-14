@@ -29,6 +29,10 @@ export function registerBattleHandlers(_io: IOServer, socket: Socket, manager: B
     wrap(() => manager.joinRoom(payload.roomId, userId), ack)
   );
 
+  socket.on("battle:myRoom", (_payload: unknown, ack?: Ack) =>
+    wrap(() => ({ roomId: manager.getRoomForUser(userId)?.id ?? null }), ack)
+  );
+
   socket.on("battle:selectCharacter", (payload: { roomId: string; characterId: string }, ack?: Ack) =>
     wrap(() => manager.selectCharacter(payload.roomId, userId, payload.characterId), ack)
   );

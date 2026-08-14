@@ -222,6 +222,13 @@ export function RaidRoomPage() {
         )}
       </div>
 
+      {state.phase !== "lobby" && (
+        <div className="panel">
+          <h3>📜 ログ</h3>
+          <BattleLog log={state.log.slice(0, visibleLogCount)} />
+        </div>
+      )}
+
       {state.phase === "lobby" && (
         <div className="panel">
           <h3>
@@ -414,11 +421,6 @@ export function RaidRoomPage() {
           </button>
         </div>
       )}
-
-      <div className="panel">
-        <h3>📜 ログ</h3>
-        <BattleLog log={state.log.slice(0, visibleLogCount)} />
-      </div>
     </div>
   );
 }

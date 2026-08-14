@@ -31,6 +31,14 @@ export function RaidLobbyListPage() {
   const [creating, setCreating] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!socket || !connected) return;
+    socket.emit("raid:myRoom", {}, (res: AckResponse<{ roomId: string | null }>) => {
+      if (res.ok && res.data) setActiveRoomId(res.data.roomId);
+    });
+  }, [socket, connected]);
 
   useEffect(() => {
     if (!socket) return;
@@ -79,6 +87,15 @@ export function RaidLobbyListPage() {
 
   return (
     <div>
+      {activeRoomId && (
+        <div className="panel">
+          <p>🐉 進行中のレイドがあります。</p>
+          <button className="btn btn-primary" onClick={() => navigate(`/raid/${activeRoomId}`)}>
+            レイドに戻る
+          </button>
+        </div>
+      )}
+
       <form className="panel" onSubmit={createLobby}>
         <h1>🐉 レイド</h1>
         <p style={{ color: "var(--text-dim)" }}>

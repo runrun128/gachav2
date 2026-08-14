@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useSocket } from "../lib/socket-context";
 
@@ -21,6 +22,14 @@ export function BattleLobbyPage() {
   const [searching, setSearching] = useState(false);
   const [outgoing, setOutgoing] = useState<{ challengeId: string; targetName: string } | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!socket || !connected) return;
+    socket.emit("battle:myRoom", {}, (res: AckResponse<{ roomId: string | null }>) => {
+      if (res.ok && res.data) setActiveRoomId(res.data.roomId);
+    });
+  }, [socket, connected]);
 
   useEffect(() => {
     if (!socket) return;
@@ -68,6 +77,15 @@ export function BattleLobbyPage() {
 
   return (
     <div>
+      {activeRoomId && (
+        <div className="panel">
+          <p>⚔️ 進行中のバトルがあります。</p>
+          <Link className="btn btn-primary" to={`/battle/${activeRoomId}`}>
+            バトルに戻る
+          </Link>
+        </div>
+      )}
+
       <div className="panel">
         <h1>⚔️ バトル</h1>
         <p style={{ color: "var(--text-dim)" }}>

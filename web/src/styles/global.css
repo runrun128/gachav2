@@ -408,11 +408,11 @@ button.card:focus-visible {
 
 .battle-log-latest {
   background: #0e0e16;
-  border: 1px solid var(--border);
+  border: 1px solid var(--gold);
   border-radius: 10px;
-  padding: 0.9rem 1rem;
-  font-size: 0.92rem;
-  line-height: 1.8;
+  padding: 1rem 1.1rem;
+  font-size: 1rem;
+  line-height: 1.9;
 }
 
 .battle-log-line {

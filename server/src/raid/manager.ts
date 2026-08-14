@@ -125,6 +125,10 @@ export class RaidManager {
     this.sendState(room, userId);
   }
 
+  getActiveRoomId(userId: string): string | null {
+    return this.userRoom.get(userId) ?? null;
+  }
+
   async startRaid(roomId: string, byUserId: string) {
     const room = this.rooms.get(roomId);
     if (!room) throw new UserFacingError("レイドが見つかりません。");

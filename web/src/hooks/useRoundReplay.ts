@@ -1,6 +1,5 @@
+import { STEP_REPLAY_MS } from "@identity-slot/game-core";
 import { useEffect, useRef, useState } from "react";
-
-const STEP_REPLAY_MS = 2000;
 
 interface ReplayState<TStep> {
   visibleLogCount: number;

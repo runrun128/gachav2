@@ -189,6 +189,11 @@ export function BattleRoomPage() {
         </div>
       </div>
 
+      <div className="panel">
+        <h3>📜 ログ</h3>
+        <BattleLog log={state.log.slice(0, visibleLogCount)} />
+      </div>
+
       {state.phase === "select" && (
         <div className="panel">
           <h3>バトルに使うキャラクターを選択してください</h3>
@@ -306,11 +311,6 @@ export function BattleRoomPage() {
           </button>
         </div>
       )}
-
-      <div className="panel">
-        <h3>📜 ログ</h3>
-        <BattleLog log={state.log.slice(0, visibleLogCount)} />
-      </div>
     </div>
   );
 }

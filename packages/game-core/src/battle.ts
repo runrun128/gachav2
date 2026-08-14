@@ -41,12 +41,13 @@ export const ROUND_ACTION_TIMEOUT_MS = 45_000;
 export const CHARACTER_SELECT_TIMEOUT_MS = 45_000;
 export const CHALLENGE_TIMEOUT_MS = 30_000;
 // ラウンド結果を見せてから次のラウンドを開始するまでの最低時間(ステップが無い場合のフォールバック)
-export const ROUND_INTERMISSION_MS = 2_600;
+export const ROUND_INTERMISSION_MS = 3_200;
 // 1アクター(1手)の結果を見せてから次のアクターの結果を見せるまでの間隔。
 // クライアント側の再生タイミングとサーバー側の「次のラウンドまで待つ時間」の両方で使う共有値。
-export const STEP_REPLAY_MS = 2_000;
+// ログが読み切れないうちに次の結果が出てしまうという指摘を受けて延長した値。
+export const STEP_REPLAY_MS = 3_200;
 // 全ステップ再生後、次のラウンドへ移るまでの余白
-export const STEP_REPLAY_BUFFER_MS = 600;
+export const STEP_REPLAY_BUFFER_MS = 900;
 
 export type BattleAction =
   | { type: "attack" }

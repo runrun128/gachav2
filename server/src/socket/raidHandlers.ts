@@ -34,6 +34,8 @@ export function registerRaidHandlers(_io: IOServer, socket: Socket, manager: Rai
     wrap(() => manager.joinRoom(payload.roomId, userId), ack)
   );
 
+  socket.on("raid:myRoom", (_payload: unknown, ack?: Ack) => wrap(() => ({ roomId: manager.getActiveRoomId(userId) }), ack));
+
   socket.on("raid:start", (payload: { roomId: string }, ack?: Ack) =>
     wrap(() => manager.startRaid(payload.roomId, userId), ack)
   );
