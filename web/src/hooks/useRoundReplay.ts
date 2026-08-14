@@ -1,5 +1,5 @@
 import { STEP_REPLAY_MS } from "@identity-slot/game-core";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 interface ReplayState<TStep> {
   visibleLogCount: number;
@@ -25,7 +25,7 @@ export function useRoundReplay<TStep extends { upToLine: number }>(
   const lastLogLengthRef = useRef(logLength);
   const timersRef = useRef<number[]>([]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     timersRef.current.forEach((t) => window.clearTimeout(t));
     timersRef.current = [];
 

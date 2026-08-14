@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** ラウンド開始マーカーはヘッダー側で表示済みなので、メッセージ欄には出さない */
 function stripRoundMarker(lines: string[]): string[] {
@@ -15,6 +15,8 @@ export function BattleLog({
   previousLogCount: number;
 }) {
   const [showHistory, setShowHistory] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   const visible = log.slice(0, visibleLogCount);
   const currentSegment = stripRoundMarker(log.slice(previousLogCount, visibleLogCount));
@@ -23,9 +25,21 @@ export function BattleLog({
   const message = currentSegment.length > 0 ? currentSegment : fallback;
   const history = visible.slice(0, previousLogCount);
 
+  // ボックスに収まりきらない時、肝心のダメージ行(末尾)が見切れないよう常に最下部までスクロールしておく
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [message]);
+
   return (
     <div>
-      <div className="pokemon-message-box" key={`${previousLogCount}-${visibleLogCount}`}>
+      <div
+        className={`pokemon-message-box${isOverflowing ? " is-overflowing" : ""}`}
+        key={`${previousLogCount}-${visibleLogCount}`}
+        ref={boxRef}
+      >
         {message.length ? (
           message.map((line, i) => <p key={i}>{line}</p>)
         ) : (
