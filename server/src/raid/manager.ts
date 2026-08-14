@@ -19,6 +19,7 @@ import {
 } from "@identity-slot/game-core";
 import { PendingAction } from "../battle/types";
 import { prisma } from "../lib/prisma";
+import { sendPushToUser, sendPushToUsers } from "../lib/push";
 import { isUserOnline } from "../socket/presence";
 import { roomToLobbySummary, roomToStateDTO } from "./dto";
 import {
@@ -115,6 +116,14 @@ export class RaidManager {
 
     this.broadcastState(room);
     this.broadcastLobbies();
+
+    sendPushToUser(room.hostUserId, {
+      title: "🐉 レイドに参加者が来ました",
+      body: `${user.displayName} が「${room.roomName}」に参加しました。`,
+      url: `/raid/${room.id}`,
+      tag: "raid-join",
+    }).catch((err) => console.error("[push] raid join notify failed", err));
+
     return { roomId: room.id };
   }
 
@@ -190,6 +199,16 @@ export class RaidManager {
 
     room.roundTimer = setTimeout(() => this.handleRoundTimeout(room.id, room.roundNo), RAID_ROUND_ACTION_TIMEOUT_MS);
     this.broadcastState(room);
+
+    // ラウンド1はキャラ選択直後で全員すでにアプリを見ているため通知は不要。
+    if (room.roundNo > 1) {
+      sendPushToUsers(actionable, {
+        title: "🐉 あなたの番です",
+        body: `「${room.roomName}」で行動を選択してください。`,
+        url: `/raid/${room.id}`,
+        tag: "raid-turn",
+      }).catch((err) => console.error("[push] raid turn notify failed", err));
+    }
   }
 
   async submitAction(roomId: string, userId: string, action: PendingAction) {

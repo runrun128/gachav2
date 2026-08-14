@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
+import { sendPushToUsers } from "../lib/push";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
 export const announcementsRouter = Router();
@@ -137,6 +138,11 @@ announcementsRouter.post("/admin/announcements", requireAuth, requireAdmin, asyn
     }
     await Promise.all(updates);
   }
+
+  sendPushToUsers(
+    recipients.map((r) => r.id),
+    { title: `📢 ${title}`, body, url: "/announcements", tag: "announcement" }
+  ).catch((err) => console.error("[push] announcement notify failed", err));
 
   res.status(201).json({ id: announcement.id, recipientCount: recipients.length });
 });

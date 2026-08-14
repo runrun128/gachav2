@@ -14,6 +14,7 @@ import {
   STEP_REPLAY_MS,
 } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
+import { sendPushToUser, sendPushToUsers } from "../lib/push";
 import { isUserOnline } from "../socket/presence";
 import { roomToStateDTO } from "./dto";
 import { buildFighter, resolveRound } from "./engine";
@@ -76,6 +77,13 @@ export class BattleManager {
       expiresAt: challenge.expiresAt,
       settings,
     });
+
+    sendPushToUser(toUserId, {
+      title: "⚔️ バトルの挑戦が届きました",
+      body: `${fromUser.displayName} があなたに挑戦しています!`,
+      url: "/battle",
+      tag: "battle-challenge",
+    }).catch((err) => console.error("[push] challenge notify failed", err));
 
     return { challengeId: id };
   }
@@ -258,6 +266,17 @@ export class BattleManager {
 
     room.roundTimer = setTimeout(() => this.handleRoundTimeout(room.id, room.roundNo), ROUND_ACTION_TIMEOUT_MS);
     this.broadcastState(room);
+
+    // ラウンド1はキャラ選択直後で両者ともすでにアプリを見ているため通知は不要。
+    // 2ラウンド目以降(判定待ちの間隔を空けて再度行動が必要になったタイミング)のみ知らせる。
+    if (room.roundNo > 1) {
+      sendPushToUsers(room.userIds, {
+        title: "⚔️ あなたの番です",
+        body: "バトルの行動を選択してください。",
+        url: `/battle/${room.id}`,
+        tag: "battle-turn",
+      }).catch((err) => console.error("[push] battle turn notify failed", err));
+    }
   }
 
   async submitAction(roomId: string, userId: string, action: PendingAction) {

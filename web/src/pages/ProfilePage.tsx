@@ -1,9 +1,10 @@
 import { RARITY_ORDER, Rarity } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { RarityTag } from "../components/RarityTag";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { getPushStatus, isPushSupported, PushStatus, subscribeToPush, unsubscribeFromPush } from "../lib/push";
 
 interface ProfileData {
   displayName: string;
@@ -29,6 +30,32 @@ export function ProfilePage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [pushStatus, setPushStatus] = useState<PushStatus | "loading">("loading");
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    getPushStatus().then(setPushStatus);
+  }, []);
+
+  async function onTogglePush() {
+    setPushError(null);
+    setPushBusy(true);
+    try {
+      if (pushStatus === "subscribed") {
+        await unsubscribeFromPush();
+      } else {
+        await subscribeToPush();
+      }
+      setPushStatus(await getPushStatus());
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : "通知設定の変更に失敗しました。");
+      setPushStatus(await getPushStatus());
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function onPromote(e: FormEvent) {
     e.preventDefault();
@@ -112,6 +139,27 @@ export function ProfilePage() {
           </div>
           {promoteError && <p className="error-text">{promoteError}</p>}
         </form>
+      )}
+
+      {isPushSupported() && (
+        <div className="panel">
+          <h3>🔔 プッシュ通知</h3>
+          <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+            お知らせが届いた時、バトル/レイドで自分の番が回ってきた時、挑戦・参加された時に通知します。
+          </p>
+          {pushStatus === "denied" ? (
+            <p className="error-text">
+              ブラウザの通知が拒否されています。端末の通知設定からこのサイトの通知を許可してください。
+            </p>
+          ) : (
+            <div className="btn-row" style={{ alignItems: "center" }}>
+              <button className="btn" type="button" onClick={onTogglePush} disabled={pushBusy || pushStatus === "loading"}>
+                {pushStatus === "subscribed" ? "通知をオフにする" : "通知をオンにする"}
+              </button>
+            </div>
+          )}
+          {pushError && <p className="error-text">{pushError}</p>}
+        </div>
       )}
 
       <form className="panel" onSubmit={onDeleteAccount}>

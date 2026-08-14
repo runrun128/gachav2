@@ -15,4 +15,7 @@ export const env = {
   webOrigin: required("WEB_ORIGIN", "http://localhost:5173"),
   cookieName: process.env.COOKIE_NAME ?? "identity_slot_token",
   adminSignupCode: required("ADMIN_SIGNUP_CODE"),
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY,
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY,
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:support@example.com",
 };
