@@ -1,5 +1,5 @@
 import { BossKey, Rarity, SpecialType } from "@identity-slot/game-core";
-import { PendingAction } from "../battle/types";
+import { ChatMessage, PendingAction } from "../battle/types";
 
 export interface RaidFighter {
   userId: string;
@@ -87,4 +87,5 @@ export interface RaidRoom {
   selectTimer: NodeJS.Timeout | null;
   roundTimer: NodeJS.Timeout | null;
   resolving: boolean;
+  chatLog: ChatMessage[];
 }

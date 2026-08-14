@@ -227,29 +227,32 @@ export function BattleRoomPage() {
         {isSpectator && <p style={{ color: "var(--gold)" }}>👀 観戦中{state.spectatorCount > 1 && `(${state.spectatorCount}人)`}</p>}
         <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
 
-        <div className="btn-row" style={{ alignItems: "stretch", marginTop: "0.75rem" }}>
-          {isSpectator
-            ? state.players.map((p) => (
-                <FighterPanel
-                  key={p.userId}
-                  label=""
-                  player={p}
-                  isSelf={false}
-                  hpOverride={activeStep?.hp[p.userId]}
-                />
-              ))
-            : me &&
-              opponent && (
-                <>
-                  <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
+        <div className="vs-row">
+          <div className="btn-row" style={{ alignItems: "stretch" }}>
+            {isSpectator
+              ? state.players.map((p) => (
                   <FighterPanel
-                    label="相手"
-                    player={opponent}
+                    key={p.userId}
+                    label=""
+                    player={p}
                     isSelf={false}
-                    hpOverride={activeStep?.hp[opponent.userId]}
+                    hpOverride={activeStep?.hp[p.userId]}
                   />
-                </>
-              )}
+                ))
+              : me &&
+                opponent && (
+                  <>
+                    <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
+                    <FighterPanel
+                      label="相手"
+                      player={opponent}
+                      isSelf={false}
+                      hpOverride={activeStep?.hp[opponent.userId]}
+                    />
+                  </>
+                )}
+          </div>
+          <span className="vs-badge">VS</span>
         </div>
       </div>
 

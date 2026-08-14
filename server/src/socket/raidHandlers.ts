@@ -51,4 +51,8 @@ export function registerRaidHandlers(_io: IOServer, socket: Socket, manager: Rai
   socket.on("raid:leave", (payload: { roomId: string }, ack?: Ack) =>
     wrap(() => manager.leaveRaid(payload.roomId, userId), ack)
   );
+
+  socket.on("raid:chat", (payload: { roomId: string; text: string }, ack?: Ack) =>
+    wrap(() => manager.sendChatMessage(payload.roomId, userId, payload.text), ack)
+  );
 }

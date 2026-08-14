@@ -1,6 +1,6 @@
 import { BossKey, ItemDef, Rarity, SPECIAL_TYPES, SpecialType } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BattleLog } from "../components/BattleLog";
 import { FighterVitals } from "../components/FighterVitals";
@@ -50,6 +50,13 @@ interface RaidParticipantDTO {
   fighter: RaidFighterDTO | null;
 }
 
+interface ChatMessageDTO {
+  userId: string;
+  displayName: string;
+  text: string;
+  at: number;
+}
+
 interface RaidStateDTO {
   roomId: string;
   roomName: string;
@@ -60,6 +67,7 @@ interface RaidStateDTO {
   hostUserId: string;
   phase: "lobby" | "select" | "round" | "finished";
   roundNo: number;
+  chatLog: ChatMessageDTO[];
   log: string[];
   roundSteps: RaidRoundStepDTO[];
   winner: boolean | null;
@@ -103,6 +111,9 @@ export function RaidRoomPage() {
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessageDTO[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   const { data: historyData } = useQuery({
     queryKey: ["raid-characters"],
@@ -122,6 +133,7 @@ export function RaidRoomPage() {
     function onState(payload: RaidStateDTO) {
       if (payload.roomId === roomId) {
         setState(payload);
+        setChatMessages(payload.chatLog);
         setError(null);
         setShowItemPicker(false);
         setConfirmingLeave(false);
@@ -129,13 +141,18 @@ export function RaidRoomPage() {
         setSubmitting(false);
       }
     }
+    function onChat(payload: ChatMessageDTO) {
+      setChatMessages((prev) => [...prev, payload].slice(-50));
+    }
     socket.on("raid:state", onState);
+    socket.on("raid:chat", onChat);
     socket.emit("raid:joinRoom", { roomId }, (res: AckResponse) => {
       if (!res.ok) setError(res.error ?? "レイドへの参加に失敗しました。");
     });
 
     return () => {
       socket.off("raid:state", onState);
+      socket.off("raid:chat", onChat);
     };
   }, [socket, roomId]);
 
@@ -194,6 +211,14 @@ export function RaidRoomPage() {
     }
     setConfirmingLeave(false);
     socket?.emit("raid:leave", { roomId }, () => navigate("/raid"));
+  }
+
+  function sendChat(e: FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim() || !socket) return;
+    socket.emit("raid:chat", { roomId, text: chatInput }, (res: AckResponse) => {
+      if (res.ok) setChatInput("");
+    });
   }
 
   return (
@@ -415,6 +440,56 @@ export function RaidRoomPage() {
           </button>
         </div>
       )}
+
+      <div className="panel">
+        <button type="button" className="btn" onClick={() => setChatOpen((v) => !v)}>
+            💬 チャット{chatMessages.length > 0 && !chatOpen ? `(${chatMessages.length})` : ""}
+          </button>
+          {chatOpen && (
+            <div style={{ marginTop: "0.6rem" }}>
+              <div
+                style={{
+                  maxHeight: "8rem",
+                  overflowY: "auto",
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  fontSize: "0.82rem",
+                }}
+              >
+                {chatMessages.length === 0 ? (
+                  <span style={{ color: "var(--text-dim)" }}>まだメッセージはありません。</span>
+                ) : (
+                  chatMessages.map((m, i) => (
+                    <div key={i} style={{ marginBottom: "0.25rem" }}>
+                      <strong>{m.displayName}</strong>: {m.text}
+                    </div>
+                  ))
+                )}
+              </div>
+              <form onSubmit={sendChat} className="btn-row" style={{ marginTop: "0.5rem" }}>
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="メッセージを入力"
+                  maxLength={200}
+                  style={{
+                    background: "var(--bg-panel-raised)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "0.5rem 0.6rem",
+                    color: "var(--text)",
+                    flex: 1,
+                  }}
+                />
+                <button className="btn btn-primary" type="submit" disabled={!chatInput.trim()}>
+                  送信
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
     </div>
   );
 }

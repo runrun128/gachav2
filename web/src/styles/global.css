@@ -409,7 +409,7 @@ button.card:focus-visible {
 }
 
 .fighter-card {
-  background: var(--bg-panel-raised);
+  background: linear-gradient(160deg, var(--bg-panel-raised) 0%, #17171f 100%);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
@@ -417,26 +417,67 @@ button.card:focus-visible {
 
 .fighter-card.is-self {
   border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.18);
 }
 
 .fighter-card-flex {
   flex: 1 1 220px;
 }
 
+.vs-row {
+  position: relative;
+  margin-top: 0.75rem;
+}
+
+.vs-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a2a38 0%, #16161f 100%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-style: italic;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .hp-bar-track {
   width: 100%;
   height: 14px;
   border-radius: 999px;
-  background: #2a2a38;
+  background: #1a1a24;
   overflow: hidden;
   border: 1px solid var(--border);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .hp-bar-fill {
+  position: relative;
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #2ecc71, #27ae60);
-  transition: width 0.4s ease;
+  transition:
+    width 0.4s ease,
+    background 0.3s ease;
+}
+
+.hp-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 35%;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0));
 }
 
 .hp-bar-fill.low {
@@ -458,21 +499,26 @@ button.card:focus-visible {
   line-height: 1.7;
 }
 
-/* ポケモンのバトル画面に出てくるメッセージウィンドウを参考にしたデザイン */
+/* 対戦ゲームのバトルHUDを参考にしたメッセージウィンドウ(ダークテーマに統一) */
 .pokemon-message-box {
-  background: #f8f8f0;
-  color: #1a1a1a;
-  border: 3px solid #1a1a1a;
-  border-radius: 10px;
+  position: relative;
+  background: linear-gradient(160deg, #1c1c2a 0%, #100f18 100%);
+  color: #fff6df;
+  border: 2px solid var(--gold);
+  border-left: 5px solid var(--gold);
+  border-radius: 8px;
   box-shadow:
-    inset 0 0 0 2px #f8f8f0,
-    inset 0 0 0 4px #4a6ea8,
-    0 4px 0 rgba(0, 0, 0, 0.35);
-  padding: 1rem 1.2rem;
+    0 0 0 1px rgba(212, 175, 55, 0.25),
+    0 0 22px rgba(212, 175, 55, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 0.9rem 1.1rem;
   font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
-  font-size: 1rem;
-  line-height: 1.75;
-  min-height: 3.6em;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  min-height: 3.4em;
   animation: message-box-in 0.2s ease-out;
 }
 
@@ -688,12 +734,12 @@ button.card:focus-visible {
   }
 
   .battle-compact .pokemon-message-box {
-    padding: 0.45rem 0.6rem;
-    min-height: 2em;
-    max-height: 3.4em;
+    padding: 0.55rem 0.75rem;
+    min-height: 2.2em;
+    max-height: 5.2em;
     overflow-y: auto;
-    font-size: 0.8rem;
-    line-height: 1.35;
+    font-size: 0.94rem;
+    line-height: 1.5;
   }
 
   .battle-compact .fighter-card {
@@ -709,7 +755,7 @@ button.card:focus-visible {
   }
 
   .battle-compact .hp-bar-track {
-    height: 9px;
+    height: 11px;
   }
 
   .battle-compact .action-grid {

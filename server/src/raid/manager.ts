@@ -69,6 +69,7 @@ export class RaidManager {
       selectTimer: null,
       roundTimer: null,
       resolving: false,
+      chatLog: [],
     };
   }
 
@@ -224,6 +225,25 @@ export class RaidManager {
     room.pending[userId] = action;
 
     this.maybeResolveRound(room);
+  }
+
+  sendChatMessage(roomId: string, userId: string, text: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new UserFacingError("レイドが見つかりません。");
+    if (!room.participantIds.includes(userId)) throw new UserFacingError("このレイドの参加者ではありません。");
+
+    const trimmed = text.trim();
+    if (!trimmed) throw new UserFacingError("メッセージを入力してください。");
+    if (trimmed.length > 200) throw new UserFacingError("メッセージは200文字以内にしてください。");
+
+    const displayName = room.participantNames[userId] ?? "プレイヤー";
+    const message = { userId, displayName, text: trimmed, at: Date.now() };
+    room.chatLog.push(message);
+    if (room.chatLog.length > 50) room.chatLog.shift();
+
+    for (const pid of room.participantIds) {
+      this.io.to(`user:${pid}`).emit("raid:chat", message);
+    }
   }
 
   private maybeResolveRound(room: RaidRoom) {
