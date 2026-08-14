@@ -1,5 +1,6 @@
 import { Rarity } from "@identity-slot/game-core";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { RarityTag } from "../components/RarityTag";
 import { api } from "../lib/api";
 
@@ -33,10 +34,17 @@ function formatDate(iso: string): string {
 }
 
 export function AnnouncementsPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["announcements"],
     queryFn: () => api.get<{ items: AnnouncementRow[] }>("/announcements"),
   });
+
+  useEffect(() => {
+    api
+      .post("/announcements/mark-read")
+      .then(() => queryClient.setQueryData(["announcements-unread-count"], { count: 0 }));
+  }, [queryClient]);
 
   return (
     <div className="panel">

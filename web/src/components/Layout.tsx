@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth-context";
+import { api } from "../lib/api";
 import { useSocket } from "../lib/socket-context";
 
 const NAV_ITEMS = [
@@ -96,6 +98,13 @@ export function Layout() {
   const navItems = user?.role === "admin" ? [...NAV_ITEMS, { to: "/admin", label: "⚙️ 運営" }] : NAV_ITEMS;
   const mobileMoreItems = navItems.filter((item) => !PRIMARY_MOBILE_NAV.some((p) => p.to === item.to));
 
+  const { data: unreadData } = useQuery({
+    queryKey: ["announcements-unread-count"],
+    queryFn: () => api.get<{ count: number }>("/announcements/unread-count"),
+    refetchInterval: 20_000,
+  });
+  const unreadCount = unreadData?.count ?? 0;
+
   return (
     <div className="app-shell">
       <header className="topnav">
@@ -109,6 +118,9 @@ export function Layout() {
               className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
             >
               {item.label}
+              {item.to === "/announcements" && unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -130,7 +142,12 @@ export function Layout() {
             end={item.to === "/"}
             className={({ isActive }) => "mobile-tab" + (isActive ? " active" : "")}
           >
-            <span className="mobile-tab-icon">{item.icon}</span>
+            <span className="mobile-tab-icon">
+              {item.icon}
+              {item.to === "/announcements" && unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              )}
+            </span>
             <span className="mobile-tab-label">{item.label}</span>
           </NavLink>
         ))}

@@ -100,6 +100,34 @@ button {
   border-bottom-color: var(--gold);
 }
 
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 0.3rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.mobile-tab-icon {
+  position: relative;
+}
+
+.mobile-tab-icon .notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -10px;
+  margin-left: 0;
+}
+
 .money-badge {
   background: var(--bg-panel-raised);
   border: 1px solid var(--border);
@@ -639,9 +667,14 @@ button.card:focus-visible {
   /* バトル/レイド画面は情報量が多くスクロールが発生しやすいため、
      この画面専用にさらに詰めたレイアウトにする */
   .battle-compact .panel {
-    padding: 0.7rem 0.8rem;
-    margin-bottom: 0.5rem;
+    padding: 0.6rem 0.7rem;
+    margin-bottom: 0.35rem;
     border-radius: 10px;
+  }
+
+  .battle-compact .pill {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
   }
 
   .battle-compact h1 {
@@ -649,15 +682,22 @@ button.card:focus-visible {
     margin-bottom: 0.15rem;
   }
 
+  .battle-compact h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+
   .battle-compact .pokemon-message-box {
-    padding: 0.6rem 0.75rem;
-    min-height: 2.6em;
-    font-size: 0.88rem;
-    line-height: 1.45;
+    padding: 0.45rem 0.6rem;
+    min-height: 2em;
+    max-height: 3.4em;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.35;
   }
 
   .battle-compact .fighter-card {
-    padding: 0.55rem 0.7rem;
+    padding: 0.4rem 0.55rem;
   }
 
   .battle-compact .fighter-card-flex {
@@ -665,7 +705,7 @@ button.card:focus-visible {
   }
 
   .battle-compact .btn-row {
-    gap: 0.5rem;
+    gap: 0.35rem;
   }
 
   .battle-compact .hp-bar-track {
@@ -673,13 +713,14 @@ button.card:focus-visible {
   }
 
   .battle-compact .action-grid {
-    gap: 0.4rem;
-    margin-top: 0.6rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    margin-top: 0.5rem;
   }
 
   .battle-compact .action-btn {
-    padding: 0.5rem 0.4rem;
-    font-size: 0.82rem;
+    padding: 0.45rem 0.3rem;
+    font-size: 0.72rem;
   }
 
   .result-grid {

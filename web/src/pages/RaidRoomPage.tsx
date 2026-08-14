@@ -212,21 +212,21 @@ export function RaidRoomPage() {
         )}
 
         {state.boss && (
-          <div style={{ marginTop: "0.75rem" }}>
-            <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.3rem" }}>
+          <div style={{ marginTop: "0.5rem" }}>
+            <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.2rem", fontSize: "0.85rem" }}>
               <strong>{state.bossName}</strong>
-              {state.boss.weakPoint && <span className="pill active">🌟 隙が生まれている!与ダメ1.5倍</span>}
-              {state.boss.shieldRounds > 0 && <span className="pill">🌪️ 暴風の盾(あと{state.boss.shieldRounds}R)</span>}
+              <span style={{ color: "var(--text-dim)" }}>
+                HP {activeStep?.bossHp ?? state.boss.hp}/{state.boss.maxHp}
+              </span>
+              {state.boss.weakPoint && <span className="pill active">🌟 弱点!ダメ1.5倍</span>}
+              {state.boss.shieldRounds > 0 && <span className="pill">🌪️ 盾(あと{state.boss.shieldRounds}R)</span>}
             </div>
             <FighterVitals hp={activeStep?.bossHp ?? state.boss.hp} maxHp={state.boss.maxHp} />
-            <div style={{ fontSize: "0.85rem", marginTop: "0.2rem" }}>
-              HP {activeStep?.bossHp ?? state.boss.hp}/{state.boss.maxHp}
-            </div>
           </div>
         )}
 
         {(state.phase === "round" || state.phase === "finished") && (
-          <div className="btn-row" style={{ alignItems: "stretch", flexWrap: "wrap", marginTop: "0.75rem" }}>
+          <div className="btn-row" style={{ alignItems: "stretch", flexWrap: "wrap", marginTop: "0.4rem" }}>
             {state.participants.map((p) => (
               <RaidFighterPanel
                 key={p.userId}
@@ -443,35 +443,35 @@ function RaidFighterPanel({
 
   return (
     <div className={`fighter-card fighter-card-flex${isSelf ? " is-self" : ""}`}>
-      <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+      <div style={{ color: "var(--text-dim)", fontSize: "0.78rem" }}>
         {mvp && "👑 "}
         {participant.displayName}
       </div>
       {f ? (
         <>
-          <div style={{ fontWeight: 700 }}>
+          <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
             <RarityTag rarity={f.rarity} /> Lv{f.level}
           </div>
-          <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
             {f.nationality}
             {f.age}歳{f.gender} / 🎭{f.feature}
           </div>
-          <div style={{ margin: "0.5rem 0 0.25rem" }}>
+          <div style={{ margin: "0.3rem 0 0.15rem" }}>
             {displayHp <= 0 ? (
-              <span style={{ color: "var(--text-dim)" }}>💀 戦闘不能</span>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.78rem" }}>💀 戦闘不能</span>
             ) : (
               <FighterVitals hp={displayHp} maxHp={f.maxHp} />
             )}
           </div>
-          <div style={{ fontSize: "0.85rem" }}>
+          <div style={{ fontSize: "0.75rem" }}>
             HP {Math.max(0, displayHp)}/{f.maxHp}
+            {statusIcons.length > 0 && <span style={{ color: "var(--gold)" }}> ・ {statusIcons.join(" / ")}</span>}
           </div>
-          {statusIcons.length > 0 && (
-            <div style={{ fontSize: "0.78rem", color: "var(--gold)" }}>{statusIcons.join(" / ")}</div>
-          )}
         </>
       ) : (
-        <p style={{ color: "var(--text-dim)" }}>{participant.characterSelected ? "準備完了" : "キャラクター選択中……"}</p>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
+          {participant.characterSelected ? "準備完了" : "キャラクター選択中……"}
+        </p>
       )}
     </div>
   );

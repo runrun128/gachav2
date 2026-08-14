@@ -33,6 +33,25 @@ announcementsRouter.get("/announcements", requireAuth, async (req, res) => {
   });
 });
 
+announcementsRouter.get("/announcements/unread-count", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { lastAnnouncementReadAt: true } });
+  if (!user) return res.status(401).json({ error: "ログインが必要です。" });
+
+  const count = await prisma.announcement.count({
+    where: {
+      OR: [{ recipientUserId: null }, { recipientUserId: req.user!.id }],
+      ...(user.lastAnnouncementReadAt ? { createdAt: { gt: user.lastAnnouncementReadAt } } : {}),
+    },
+  });
+
+  res.json({ count });
+});
+
+announcementsRouter.post("/announcements/mark-read", requireAuth, async (req, res) => {
+  await prisma.user.update({ where: { id: req.user!.id }, data: { lastAnnouncementReadAt: new Date() } });
+  res.status(204).end();
+});
+
 const createSchema = z
   .object({
     title: z.string().min(1).max(60),

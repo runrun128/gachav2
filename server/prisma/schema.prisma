@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  displayName  String
-  money        Int      @default(1000)
-  role         String   @default("user") // "user" | "admin"
-  createdAt    DateTime @default(now())
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  passwordHash           String
+  displayName            String
+  money                  Int       @default(1000)
+  role                   String    @default("user") // "user" | "admin"
+  createdAt              DateTime  @default(now())
+  lastAnnouncementReadAt DateTime?
 
   characters            Character[]
   items                 InventoryItem[]
