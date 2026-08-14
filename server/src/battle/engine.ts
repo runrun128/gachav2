@@ -169,6 +169,9 @@ function resolveItemEffect(
   targetDefenseMult: number
 ): string[] {
   const item = ITEMS[itemKey];
+  // 使用を選択した後〜ラウンド解決までの間に運営がアイテムを削除した場合(期間限定アイテム等)、
+  // 効果は不発として扱いクラッシュしないようにする。
+  if (!item) return [`🌫️ ${actor.displayName} が使おうとしたアイテムは、すでに失われていた……`];
   const label = `${item.emoji} ${item.name}`;
 
   switch (item.effect) {

@@ -3,6 +3,7 @@ import {
   GACHA_COST,
   GACHA_SR_COST,
   GACHA_SSR_COST,
+  ItemDef,
   RARITIES,
   RARITY_ORDER,
   Rarity,
@@ -16,13 +17,28 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 
 type PullType = "single" | "ten" | "sr" | "ssr";
-type Phase = "idle" | "shuffling" | "revealing" | "confirming" | "single-done" | "ten-shuffling" | "ten-done";
+type Phase =
+  | "idle"
+  | "shuffling"
+  | "revealing"
+  | "confirming"
+  | "single-done"
+  | "ten-shuffling"
+  | "ten-done"
+  | "item-shuffling"
+  | "item-done";
 
 interface LimitedBanner {
   key: string;
   name: string;
   description: string;
   cost: number;
+}
+
+interface ItemGachaData {
+  active: boolean;
+  cost: number;
+  pool: ItemDef[];
 }
 
 const REVEAL_LABELS = ["🌍 出身国", "🎂 年齢", "⚧️ 性別", "🎭 特徴"];
@@ -97,6 +113,12 @@ export function GachaPage() {
     queryFn: () => api.get<{ banners: LimitedBanner[] }>("/gacha/limited"),
   });
   const limitedBanners = limitedData?.banners ?? [];
+
+  const { data: itemGachaData } = useQuery({
+    queryKey: ["item-gacha"],
+    queryFn: () => api.get<ItemGachaData>("/gacha/items-gacha"),
+  });
+  const [itemResult, setItemResult] = useState<ItemDef | null>(null);
 
   useEffect(() => {
     return () => {
@@ -192,8 +214,30 @@ export function GachaPage() {
     }
   }
 
+  async function spinItemGacha() {
+    if (busy) return;
+    setError(null);
+    setItemResult(null);
+    setPhase("item-shuffling");
+    try {
+      const [res] = await Promise.all([
+        api.post<{ result: ItemDef; money: number }>("/gacha/items-gacha/spin", {}),
+        minDelay(SHUFFLE_MS),
+      ]);
+      await refresh();
+      setItemResult(res.result);
+      setPhase("item-done");
+    } catch (err) {
+      handleSpinError(err);
+    }
+  }
+
   const busy =
-    phase === "revealing" || phase === "shuffling" || phase === "ten-shuffling" || phase === "confirming";
+    phase === "revealing" ||
+    phase === "shuffling" ||
+    phase === "ten-shuffling" ||
+    phase === "confirming" ||
+    phase === "item-shuffling";
   // 演出中は選択肢を隠して、ガチャの結果だけに集中してもらう
   const showSelection = !busy;
 
@@ -211,6 +255,35 @@ export function GachaPage() {
             </button>
           </div>
         ))}
+
+      {showSelection && itemGachaData?.active && (
+        <div className="panel">
+          <h2 style={{ margin: 0 }}>🎒 アイテムガチャ</h2>
+          <p style={{ color: "var(--text-dim)" }}>1回引くとアイテムが1つ手に入ります。</p>
+          <div className="btn-row" style={{ flexWrap: "wrap", marginBottom: "0.6rem" }}>
+            {itemGachaData.pool.map((item) => (
+              <span key={item.key} className="pill" title={item.desc}>
+                {item.emoji} {item.name}
+              </span>
+            ))}
+          </div>
+          <button className="btn btn-primary" disabled={cooldown > 0} onClick={spinItemGacha}>
+            🎒 引く({itemGachaData.cost}コイン)
+          </button>
+        </div>
+      )}
+
+      {phase === "item-shuffling" && <ShuffleCard label="アイテムガチャ抽選中……" />}
+
+      {phase === "item-done" && itemResult && (
+        <div className="panel reveal-pop">
+          <h2>🎒 GET ITEM!</h2>
+          <p style={{ fontSize: "1.4rem" }}>
+            {itemResult.emoji} <strong>{itemResult.name}</strong>
+          </p>
+          <p style={{ color: "var(--text-dim)" }}>{itemResult.desc}</p>
+        </div>
+      )}
 
       {showSelection && (
         <div className="panel">

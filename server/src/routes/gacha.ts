@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   GACHA_COOLDOWN_SECONDS,
   GachaPullType,
+  ITEMS,
+  ItemDef,
   costForPullType,
   minRarityForPullType,
   spinReels,
@@ -126,4 +128,88 @@ gachaRouter.post("/limited/:key/spin", requireAuth, async (req, res) => {
   ]);
 
   res.json({ result, money: updatedUser.money });
+});
+
+gachaRouter.get("/items-gacha", requireAuth, async (_req, res) => {
+  const [config, entries] = await Promise.all([
+    prisma.itemGachaConfig.findUnique({ where: { id: "singleton" } }),
+    prisma.itemGachaEntry.findMany({ orderBy: { createdAt: "asc" } }),
+  ]);
+  const pool = entries
+    .map((e) => ITEMS[e.itemKey])
+    .filter((item): item is NonNullable<typeof item> => !!item);
+  res.json({
+    active: config?.active ?? false,
+    cost: config?.cost ?? 300,
+    pool,
+  });
+});
+
+gachaRouter.post("/items-gacha/spin", requireAuth, async (req, res) => {
+  const userId = req.user!.id;
+
+  const now = Date.now();
+  const last = lastGachaAt.get(userId) ?? 0;
+  const remaining = GACHA_COOLDOWN_SECONDS - (now - last) / 1000;
+  if (remaining > 0) {
+    return res.status(429).json({ error: `ガチャは連続で引けません。あと${remaining.toFixed(1)}秒待ってください。` });
+  }
+
+  const [config, entries] = await Promise.all([
+    prisma.itemGachaConfig.findUnique({ where: { id: "singleton" } }),
+    prisma.itemGachaEntry.findMany(),
+  ]);
+  if (!config || !config.active) {
+    return res.status(400).json({ error: "アイテムガチャは現在開催されていません。" });
+  }
+  type Candidate = { entry: (typeof entries)[number]; item: ItemDef };
+  const candidates: Candidate[] = [];
+  for (const e of entries) {
+    const item = ITEMS[e.itemKey];
+    if (item) candidates.push({ entry: e, item });
+  }
+  if (candidates.length === 0) {
+    return res.status(400).json({ error: "アイテムガチャの中身が空です。" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(401).json({ error: "ログインが必要です。" });
+  if (user.money < config.cost) {
+    return res.status(400).json({ error: `コインが足りません。(所持金: ${user.money} / 必要: ${config.cost})` });
+  }
+
+  const totalWeight = candidates.reduce((sum, c) => sum + c.entry.weight, 0);
+  let roll = Math.random() * totalWeight;
+  let picked = candidates[candidates.length - 1];
+  for (const c of candidates) {
+    if (roll < c.entry.weight) {
+      picked = c;
+      break;
+    }
+    roll -= c.entry.weight;
+  }
+
+  lastGachaAt.set(userId, now);
+
+  try {
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const userUpdate = await tx.user.updateMany({
+        where: { id: userId, money: { gte: config.cost } },
+        data: { money: { decrement: config.cost } },
+      });
+      if (userUpdate.count === 0) throw new Error("ITEM_GACHA_CONFLICT");
+      await tx.inventoryItem.upsert({
+        where: { userId_itemKey: { userId, itemKey: picked.item.key } },
+        create: { userId, itemKey: picked.item.key, quantity: 1 },
+        update: { quantity: { increment: 1 } },
+      });
+      return tx.user.findUniqueOrThrow({ where: { id: userId } });
+    });
+    res.json({ result: picked.item, money: updatedUser.money });
+  } catch (err) {
+    if (err instanceof Error && err.message === "ITEM_GACHA_CONFLICT") {
+      return res.status(409).json({ error: "他の操作と競合しました。もう一度お試しください。" });
+    }
+    throw err;
+  }
 });

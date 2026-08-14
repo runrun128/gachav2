@@ -40,6 +40,17 @@ interface CustomFeatureRow {
   luckBonus: number;
 }
 
+interface ItemGachaConfig {
+  cost: number;
+  active: boolean;
+}
+
+interface ItemGachaEntryRow {
+  itemKey: string;
+  weight: number;
+  item: ItemDef | null;
+}
+
 const inputStyle: CSSProperties = {
   background: "var(--bg-panel-raised)",
   border: "1px solid var(--border)",
@@ -224,6 +235,85 @@ export function AdminPage() {
       setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
     } finally {
       setCustomFeatureBusy(false);
+    }
+  }
+
+  const { data: itemGachaData } = useQuery({
+    queryKey: ["admin-item-gacha"],
+    queryFn: () => api.get<{ config: ItemGachaConfig; entries: ItemGachaEntryRow[] }>("/admin/item-gacha"),
+  });
+  const [itemGachaCost, setItemGachaCost] = useState("300");
+  const [newPoolItemKey, setNewPoolItemKey] = useState("");
+  const [newPoolWeight, setNewPoolWeight] = useState("10");
+  const [itemGachaBusy, setItemGachaBusy] = useState(false);
+
+  async function toggleItemGachaActive() {
+    if (!itemGachaData) return;
+    setItemGachaBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.patch("/admin/item-gacha/config", { active: !itemGachaData.config.active });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-item-gacha"] }),
+        queryClient.invalidateQueries({ queryKey: ["item-gacha"] }),
+      ]);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "更新に失敗しました。");
+    } finally {
+      setItemGachaBusy(false);
+    }
+  }
+
+  async function updateItemGachaCost(e: FormEvent) {
+    e.preventDefault();
+    setItemGachaBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.patch("/admin/item-gacha/config", { cost: Number(itemGachaCost) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-item-gacha"] }),
+        queryClient.invalidateQueries({ queryKey: ["item-gacha"] }),
+      ]);
+      setMessage("✅ アイテムガチャのコインを更新しました。");
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "更新に失敗しました。");
+    } finally {
+      setItemGachaBusy(false);
+    }
+  }
+
+  async function addPoolItem(e: FormEvent) {
+    e.preventDefault();
+    setItemGachaBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.post("/admin/item-gacha/entries", { itemKey: newPoolItemKey, weight: Number(newPoolWeight) });
+      setNewPoolItemKey("");
+      setNewPoolWeight("10");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-item-gacha"] }),
+        queryClient.invalidateQueries({ queryKey: ["item-gacha"] }),
+      ]);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "追加に失敗しました。");
+    } finally {
+      setItemGachaBusy(false);
+    }
+  }
+
+  async function removePoolItem(itemKey: string) {
+    setItemGachaBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/item-gacha/entries/${itemKey}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-item-gacha"] }),
+        queryClient.invalidateQueries({ queryKey: ["item-gacha"] }),
+      ]);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setItemGachaBusy(false);
     }
   }
 
@@ -1114,6 +1204,80 @@ export function AdminPage() {
           趣味を追加
         </button>
       </form>
+
+      <div className="panel">
+        <h3>🎒 アイテムガチャ管理</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          プレイヤーがコインでアイテムを引けるガチャです。中身(抽選プール)を自由に編集できます。
+        </p>
+        <div className="btn-row" style={{ alignItems: "center" }}>
+          <button
+            className="btn"
+            style={{ color: itemGachaData?.config.active ? "var(--danger)" : "var(--gold)" }}
+            disabled={itemGachaBusy || !itemGachaData}
+            onClick={toggleItemGachaActive}
+          >
+            {itemGachaData?.config.active ? "🔴 停止する" : "🟢 開催する"}
+          </button>
+          <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+            現在のコスト: {itemGachaData?.config.cost}コイン
+          </span>
+        </div>
+
+        <form className="btn-row" style={{ marginTop: "0.8rem", alignItems: "center" }} onSubmit={updateItemGachaCost}>
+          <input
+            value={itemGachaCost}
+            onChange={(e) => setItemGachaCost(e.target.value)}
+            placeholder="コスト"
+            style={{ ...inputStyle, width: 100 }}
+          />
+          <button className="btn" type="submit" disabled={itemGachaBusy}>
+            コストを更新
+          </button>
+        </form>
+
+        <h4 style={{ marginTop: "1.2rem" }}>抽選プール</h4>
+        <div className="result-grid">
+          {itemGachaData?.entries.map((e) => (
+            <div className="card" key={e.itemKey}>
+              <div style={{ fontWeight: 700 }}>
+                {e.item ? `${e.item.emoji} ${e.item.name}` : `⚠️ ${e.itemKey}(不明)`}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>重み: {e.weight}</div>
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)", marginTop: "0.4rem" }}
+                disabled={itemGachaBusy}
+                onClick={() => removePoolItem(e.itemKey)}
+              >
+                プールから外す
+              </button>
+            </div>
+          ))}
+          {itemGachaData?.entries.length === 0 && <p style={{ color: "var(--text-dim)" }}>プールが空です。</p>}
+        </div>
+
+        <form className="btn-row" style={{ marginTop: "1rem", alignItems: "center", flexWrap: "wrap" }} onSubmit={addPoolItem}>
+          <select value={newPoolItemKey} onChange={(e) => setNewPoolItemKey(e.target.value)} style={{ ...inputStyle, minWidth: 200 }}>
+            <option value="">アイテムを選択</option>
+            {itemsData?.items.map((i) => (
+              <option key={i.key} value={i.key}>
+                {i.emoji} {i.name}({i.tier})
+              </option>
+            ))}
+          </select>
+          <input
+            value={newPoolWeight}
+            onChange={(e) => setNewPoolWeight(e.target.value)}
+            placeholder="重み"
+            style={{ ...inputStyle, width: 80 }}
+          />
+          <button className="btn btn-primary" type="submit" disabled={itemGachaBusy || !newPoolItemKey}>
+            プールに追加
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

@@ -67,6 +67,21 @@ model LimitedGacha {
   createdAt   DateTime @default(now())
 }
 
+// アイテムガチャの設定(1行だけのシングルトン)。運営パネルからコスト/開催状態を変更できる。
+model ItemGachaConfig {
+  id     String  @id @default("singleton")
+  cost   Int     @default(300)
+  active Boolean @default(true)
+}
+
+// アイテムガチャの抽選プール。運営がどのアイテムを何倍の重みで出すか管理する。
+model ItemGachaEntry {
+  id        String   @id @default(cuid())
+  itemKey   String   @unique
+  weight    Int      @default(10)
+  createdAt DateTime @default(now())
+}
+
 // 運営が管理画面から追加した独自アイテム。既存のITEM_EFFECTのいずれかを指定して
 // 挙動を組み立てる(全く新しい効果ロジックはコード変更なしには追加できない)。
 model CustomItem {

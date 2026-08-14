@@ -14,8 +14,12 @@ shopRouter.get("/inventory", requireAuth, async (req, res) => {
   const owned = await prisma.inventoryItem.findMany({
     where: { userId: req.user!.id, quantity: { gt: 0 } },
   });
+  // 終売(削除)されたアイテムは、名前も絵文字もない壊れた表示になってしまうため一覧から除外する。
+  // 実際の所持数はDB上に残ったままなので、同キーのアイテムが復活すれば再び見えるようになる。
   res.json({
-    items: owned.map((o) => ({ itemKey: o.itemKey, quantity: o.quantity, ...ITEMS[o.itemKey] })),
+    items: owned
+      .filter((o) => ITEMS[o.itemKey])
+      .map((o) => ({ itemKey: o.itemKey, quantity: o.quantity, ...ITEMS[o.itemKey] })),
   });
 });
 

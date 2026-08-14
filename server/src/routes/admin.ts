@@ -204,18 +204,14 @@ adminRouter.post("/custom-items", async (req, res) => {
   res.status(201).json({ item: created });
 });
 
+// 期間限定アイテムの終売用に、誰かが所持中でも削除できる。
+// 削除後にその所持者が使おうとした場合は、バトル/レイドエンジン側で
+// 「アイテムが不正です」と拒否されるか、既に選択済みの行動は不発として処理される
+// (resolveItemEffect / resolveItemEffectVsBoss のnullガード参照)。
 adminRouter.delete("/custom-items/:key", async (req, res) => {
   const key = req.params.key;
   const existing = await prisma.customItem.findUnique({ where: { key } });
   if (!existing) return res.status(404).json({ error: "そのアイテムが見つかりません。" });
-
-  const [heldCount, announcedCount] = await Promise.all([
-    prisma.inventoryItem.count({ where: { itemKey: key, quantity: { gt: 0 } } }),
-    prisma.announcement.count({ where: { itemKey: key } }),
-  ]);
-  if (heldCount > 0 || announcedCount > 0) {
-    return res.status(400).json({ error: "誰かが所持中、またはお知らせで配布済みのため削除できません。" });
-  }
 
   await prisma.customItem.delete({ where: { key } });
   removeCustomItem(key);
@@ -259,5 +255,63 @@ adminRouter.delete("/custom-features/:label", async (req, res) => {
   // 削除しても既存キャラの表示は壊れない(ステータスボーナスの恩恵が今後なくなるだけ)。
   await prisma.customFeature.delete({ where: { label } });
   removeCustomFeature(label);
+  res.status(204).end();
+});
+
+// ===== アイテムガチャ =====
+
+adminRouter.get("/item-gacha", async (_req, res) => {
+  const [config, entries] = await Promise.all([
+    prisma.itemGachaConfig.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton" },
+      update: {},
+    }),
+    prisma.itemGachaEntry.findMany({ orderBy: { createdAt: "asc" } }),
+  ]);
+  const items = entries.map((e) => ({ ...e, item: ITEMS[e.itemKey] ?? null }));
+  res.json({ config, entries: items });
+});
+
+const itemGachaConfigSchema = z.object({
+  cost: z.coerce.number().int().min(1).max(1_000_000).optional(),
+  active: z.boolean().optional(),
+});
+
+adminRouter.patch("/item-gacha/config", async (req, res) => {
+  const parsed = itemGachaConfigSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "入力内容が不正です。" });
+
+  const updated = await prisma.itemGachaConfig.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton", ...parsed.data },
+    update: parsed.data,
+  });
+  res.json({ config: updated });
+});
+
+const addItemGachaEntrySchema = z.object({
+  itemKey: z.string().min(1),
+  weight: z.coerce.number().int().min(1).max(10_000).default(10),
+});
+
+adminRouter.post("/item-gacha/entries", async (req, res) => {
+  const parsed = addItemGachaEntrySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "入力内容が不正です。" });
+  if (!ITEMS[parsed.data.itemKey]) return res.status(400).json({ error: "存在しないアイテムです。" });
+
+  const created = await prisma.itemGachaEntry.upsert({
+    where: { itemKey: parsed.data.itemKey },
+    create: parsed.data,
+    update: { weight: parsed.data.weight },
+  });
+  res.status(201).json({ entry: created });
+});
+
+adminRouter.delete("/item-gacha/entries/:itemKey", async (req, res) => {
+  const existing = await prisma.itemGachaEntry.findUnique({ where: { itemKey: req.params.itemKey } });
+  if (!existing) return res.status(404).json({ error: "そのアイテムはプールにありません。" });
+
+  await prisma.itemGachaEntry.delete({ where: { itemKey: req.params.itemKey } });
   res.status(204).end();
 });
