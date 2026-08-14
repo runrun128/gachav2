@@ -83,6 +83,8 @@ export function BattleRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [confirmingRetire, setConfirmingRetire] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const { data: historyData } = useQuery({
     queryKey: ["battle-characters"],
@@ -102,8 +104,11 @@ export function BattleRoomPage() {
     function onState(payload: BattleStateDTO) {
       if (payload.roomId === roomId) {
         setState(payload);
+        setError(null);
         setShowItemPicker(false);
         setConfirmingRetire(false);
+        setSelecting(false);
+        setSubmitting(false);
       }
     }
     socket.on("battle:state", onState);
@@ -141,14 +146,25 @@ export function BattleRoomPage() {
   }
 
   function selectCharacter(characterId: string) {
+    if (selecting) return;
+    setSelecting(true);
     socket?.emit("battle:selectCharacter", { roomId, characterId }, (res: AckResponse) => {
-      if (!res.ok) setError(res.error ?? "選択に失敗しました。");
+      // 「すでに選択済みです」は直前の送信が既に成功している合図なので、次のstate配信を待つだけでよい
+      if (!res.ok && res.error !== "すでに選択済みです。") {
+        setSelecting(false);
+        setError(res.error ?? "選択に失敗しました。");
+      }
     });
   }
 
   function submitAction(action: { type: string; itemKey?: string }) {
+    if (submitting) return;
+    setSubmitting(true);
     socket?.emit("battle:action", { roomId, action }, (res: AckResponse) => {
-      if (!res.ok) setError(res.error ?? "行動の送信に失敗しました。");
+      if (!res.ok && res.error !== "すでに行動を選択済みです。") {
+        setSubmitting(false);
+        setError(res.error ?? "行動の送信に失敗しました。");
+      }
     });
   }
 
@@ -181,7 +197,13 @@ export function BattleRoomPage() {
           ) : (
             <div className="result-grid">
               {historyData?.items.map((c) => (
-                <button type="button" className="card" key={c.id} onClick={() => selectCharacter(c.id)}>
+                <button
+                  type="button"
+                  className="card"
+                  key={c.id}
+                  disabled={selecting}
+                  onClick={() => selectCharacter(c.id)}
+                >
                   <RarityTag rarity={c.rarity} /> Lv{c.level}
                   <div>
                     {c.nationality}
@@ -203,16 +225,16 @@ export function BattleRoomPage() {
             <>
               <h3>行動を選択してください</h3>
               <div className="action-grid">
-                <button className="action-btn" onClick={() => submitAction({ type: "attack" })}>
+                <button className="action-btn" disabled={submitting} onClick={() => submitAction({ type: "attack" })}>
                   ⚔️ こうげき
                 </button>
-                <button className="action-btn" onClick={() => submitAction({ type: "defend" })}>
+                <button className="action-btn" disabled={submitting} onClick={() => submitAction({ type: "defend" })}>
                   🛡️ ぼうぎょ
                 </button>
                 {me.fighter!.hasSpecial && (
                   <button
                     className="action-btn"
-                    disabled={me.fighter!.specialCooldown > 0}
+                    disabled={submitting || me.fighter!.specialCooldown > 0}
                     onClick={() => submitAction({ type: "special" })}
                   >
                     ✨ とくぎ{me.fighter!.specialCooldown > 0 ? `(あと${me.fighter!.specialCooldown}R)` : ""}
@@ -221,13 +243,13 @@ export function BattleRoomPage() {
                 {me.fighter!.hasGamble && (
                   <button
                     className="action-btn"
-                    disabled={me.fighter!.gambleCooldown > 0}
+                    disabled={submitting || me.fighter!.gambleCooldown > 0}
                     onClick={() => submitAction({ type: "gamble" })}
                   >
                     💀 一か八か{me.fighter!.gambleCooldown > 0 ? `(あと${me.fighter!.gambleCooldown}R)` : ""}
                   </button>
                 )}
-                <button className="action-btn" onClick={() => setShowItemPicker((v) => !v)}>
+                <button className="action-btn" disabled={submitting} onClick={() => setShowItemPicker((v) => !v)}>
                   🎒 アイテム
                 </button>
                 <button
@@ -248,6 +270,7 @@ export function BattleRoomPage() {
                         key={item.itemKey}
                         className="card"
                         style={{ cursor: "pointer", textAlign: "left" }}
+                        disabled={submitting}
                         onClick={() => submitAction({ type: "item", itemKey: item.itemKey })}
                       >
                         <div style={{ fontWeight: 700 }}>

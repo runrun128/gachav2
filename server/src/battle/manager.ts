@@ -356,12 +356,14 @@ export class BattleManager {
     const room = this.getRoomForUser(userId);
     if (!room || room.phase === "finished") return;
 
+    // 60秒: 無料ホスティングのコールドスタートやDB再接続を挟んだリロードでも
+    // 復帰できるよう、切断からリタイア扱いまでに十分な猶予を持たせる
     setTimeout(() => {
       if (isUserOnline(userId)) return;
       const stillRoom = this.getRoomForUser(userId);
       if (!stillRoom || stillRoom.id !== room.id || stillRoom.phase === "finished") return;
       this.retire(room.id, userId).catch((err) => console.error("[battle disconnect retire]", err));
-    }, 20_000);
+    }, 60_000);
   }
 
   private requireRoomMember(roomId: string, userId: string): BattleRoom {

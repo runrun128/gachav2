@@ -355,11 +355,13 @@ export class RaidManager {
   handleDisconnect(userId: string) {
     const roomId = this.userRoom.get(userId);
     if (!roomId) return;
+    // 60秒: 無料ホスティングのコールドスタートやDB再接続を挟んだリロードでも
+    // 復帰できるよう、切断から離脱扱いまでに十分な猶予を持たせる
     setTimeout(() => {
       if (isUserOnline(userId)) return;
       if (this.userRoom.get(userId) !== roomId) return;
       this.leaveRaid(roomId, userId).catch((err) => console.error("[raid disconnect leave]", err));
-    }, 20_000);
+    }, 60_000);
   }
 
   private handleSelectTimeout(roomId: string) {
