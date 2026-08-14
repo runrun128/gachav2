@@ -15,6 +15,7 @@
   --rarity-SSR: #f1c40f;
   --rarity-UR: #e74c3c;
   --rarity-MUR: #00ffd1;
+  --rarity-KMR: #ffd700;
 }
 
 * {
@@ -315,6 +316,21 @@ button.card:focus-visible {
 .glow-mur {
   border-color: var(--rarity-MUR);
   animation: glow-pulse-mur 1.8s ease-in-out infinite;
+}
+
+.glow-kmr {
+  border-color: var(--rarity-KMR);
+  animation: glow-pulse-kmr 1.4s ease-in-out infinite;
+}
+
+@keyframes glow-pulse-kmr {
+  0%,
+  100% {
+    box-shadow: 0 0 22px rgba(255, 215, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 48px rgba(255, 215, 0, 0.85);
+  }
 }
 
 @keyframes glow-pulse-ur {

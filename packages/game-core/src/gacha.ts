@@ -46,7 +46,11 @@ export interface SpinResult {
 }
 
 export function chooseRarity(minRarity?: Rarity, rng: () => number = Math.random): Rarity {
-  const rarities = minRarity ? RARITY_ORDER.slice(RARITY_ORDER.indexOf(minRarity)) : RARITY_ORDER;
+  const pool = minRarity ? RARITY_ORDER.slice(RARITY_ORDER.indexOf(minRarity)) : RARITY_ORDER;
+  // weight: 0 のランク(運営限定のKMRなど)はガチャの抽選対象から完全に除外する。
+  // 除外せずにいると浮動小数点誤差でループの最後まで丸め込まれた場合に
+  // フォールバックで選ばれてしまう可能性があるため、事前にフィルタする。
+  const rarities = pool.filter((r) => RARITIES[r].weight > 0);
   const weights = rarities.map((r) => RARITIES[r].weight);
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = rng() * total;

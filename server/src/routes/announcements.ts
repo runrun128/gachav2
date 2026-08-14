@@ -1,16 +1,18 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ITEMS } from "@identity-slot/game-core";
+import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
 export const announcementsRouter = Router();
 
-announcementsRouter.get("/announcements", requireAuth, async (_req, res) => {
+// 全員宛の告知 + 自分宛の個人メッセージ(運営からの個別のお礼・報告等)の両方をまとめて返す
+announcementsRouter.get("/announcements", requireAuth, async (req, res) => {
   const items = await prisma.announcement.findMany({
+    where: { OR: [{ recipientUserId: null }, { recipientUserId: req.user!.id }] },
     orderBy: { createdAt: "desc" },
     take: 30,
-    include: { author: { select: { displayName: true } } },
+    include: { author: { select: { displayName: true } }, grantedCharacter: true },
   });
 
   res.json({
@@ -19,30 +21,47 @@ announcementsRouter.get("/announcements", requireAuth, async (_req, res) => {
       title: a.title,
       body: a.body,
       authorDisplayName: a.author.displayName,
+      isPersonal: a.recipientUserId !== null,
       coinAmount: a.coinAmount,
       itemKey: a.itemKey,
       itemAmount: a.itemAmount,
       itemName: a.itemKey ? (ITEMS[a.itemKey]?.name ?? a.itemKey) : null,
       itemEmoji: a.itemKey ? (ITEMS[a.itemKey]?.emoji ?? "🎁") : null,
+      grantedCharacter: a.grantedCharacter,
       createdAt: a.createdAt,
     })),
   });
 });
 
-const createSchema = z.object({
-  title: z.string().min(1).max(60),
-  body: z.string().min(1).max(2000),
-  coinAmount: z.coerce.number().int().min(1).max(1_000_000_000).optional(),
-  itemKey: z.string().min(1).optional(),
-  itemAmount: z.coerce.number().int().min(1).max(1_000_000).optional(),
-});
+const createSchema = z
+  .object({
+    title: z.string().min(1).max(60),
+    body: z.string().min(1).max(2000),
+    recipientUserId: z.string().min(1).optional(),
+    coinAmount: z.coerce.number().int().min(1).max(1_000_000_000).optional(),
+    itemKey: z.string().min(1).optional(),
+    itemAmount: z.coerce.number().int().min(1).max(1_000_000).optional(),
+    character: z
+      .object({
+        nationality: z.string().min(1).max(30),
+        age: z.coerce.number().int().min(0).max(999),
+        gender: z.string().min(1).max(20),
+        feature: z.string().min(1).max(40),
+        secretFeature: z.string().min(1).max(60),
+        specialType: z.enum(SPECIAL_TYPE_ORDER as [string, ...string[]]),
+      })
+      .optional(),
+  })
+  .refine((v) => !v.character || v.recipientUserId, {
+    message: "キャラクターを添えるには宛先を特定のユーザーに指定してください。",
+  });
 
 announcementsRouter.post("/admin/announcements", requireAuth, requireAdmin, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
   }
-  const { title, body, coinAmount, itemKey, itemAmount } = parsed.data;
+  const { title, body, recipientUserId, coinAmount, itemKey, itemAmount, character } = parsed.data;
 
   if (itemKey && !ITEMS[itemKey]) {
     return res.status(400).json({ error: "存在しないアイテムです。" });
@@ -51,23 +70,39 @@ announcementsRouter.post("/admin/announcements", requireAuth, requireAdmin, asyn
     return res.status(400).json({ error: "アイテムを付ける場合は個数を指定してください。" });
   }
 
+  let recipients: { id: string }[];
+  if (recipientUserId) {
+    const target = await prisma.user.findUnique({ where: { id: recipientUserId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: "対象のユーザーが見つかりません。" });
+    recipients = [target];
+  } else {
+    recipients = await prisma.user.findMany({ select: { id: true } });
+  }
+
+  let grantedCharacterId: string | null = null;
+  if (character && recipientUserId) {
+    const createdCharacter = await prisma.character.create({
+      data: { userId: recipientUserId, ...character, rarity: "KMR", isExclusive: true },
+    });
+    grantedCharacterId = createdCharacter.id;
+  }
+
   const announcement = await prisma.announcement.create({
     data: {
       title,
       body,
       authorId: req.user!.id,
+      recipientUserId: recipientUserId ?? null,
       coinAmount: coinAmount ?? null,
       itemKey: itemKey ?? null,
       itemAmount: itemKey ? (itemAmount ?? null) : null,
+      grantedCharacterId,
     },
   });
 
-  let recipientCount = 0;
   if (coinAmount || itemKey) {
-    const users = await prisma.user.findMany({ select: { id: true } });
-    recipientCount = users.length;
     const updates: Promise<unknown>[] = [];
-    for (const u of users) {
+    for (const u of recipients) {
       if (coinAmount) {
         updates.push(prisma.user.update({ where: { id: u.id }, data: { money: { increment: coinAmount } } }));
       }
@@ -84,5 +119,5 @@ announcementsRouter.post("/admin/announcements", requireAuth, requireAdmin, asyn
     await Promise.all(updates);
   }
 
-  res.status(201).json({ id: announcement.id, recipientCount });
+  res.status(201).json({ id: announcement.id, recipientCount: recipients.length });
 });

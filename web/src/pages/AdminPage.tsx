@@ -32,9 +32,17 @@ export function AdminPage() {
 
   const [announceTitle, setAnnounceTitle] = useState("");
   const [announceBody, setAnnounceBody] = useState("");
+  const [announceRecipient, setAnnounceRecipient] = useState<"all" | "selected">("all");
   const [announceCoin, setAnnounceCoin] = useState("");
   const [announceItemKey, setAnnounceItemKey] = useState("");
   const [announceItemAmount, setAnnounceItemAmount] = useState("1");
+  const [announceAttachChar, setAnnounceAttachChar] = useState(false);
+  const [announceCharNationality, setAnnounceCharNationality] = useState("");
+  const [announceCharAge, setAnnounceCharAge] = useState("20");
+  const [announceCharGender, setAnnounceCharGender] = useState("");
+  const [announceCharFeature, setAnnounceCharFeature] = useState("");
+  const [announceCharSecretFeature, setAnnounceCharSecretFeature] = useState("");
+  const [announceCharSpecialType, setAnnounceCharSpecialType] = useState(SPECIAL_TYPE_ORDER[0]);
 
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -155,6 +163,14 @@ export function AdminPage() {
   async function sendAnnouncement(e: FormEvent) {
     e.preventDefault();
     if (!announceTitle.trim() || !announceBody.trim()) return;
+    if (announceRecipient === "selected" && !selected) return;
+    const attachCharacter =
+      announceRecipient === "selected" &&
+      announceAttachChar &&
+      announceCharNationality.trim() &&
+      announceCharGender.trim() &&
+      announceCharFeature.trim() &&
+      announceCharSecretFeature.trim();
     setBusy(true);
     setMessage(null);
     setErrorMessage(null);
@@ -162,16 +178,36 @@ export function AdminPage() {
       const res = await api.post<{ id: string; recipientCount: number }>("/admin/announcements", {
         title: announceTitle,
         body: announceBody,
+        recipientUserId: announceRecipient === "selected" ? selected!.id : undefined,
         coinAmount: announceCoin ? Number(announceCoin) : undefined,
         itemKey: announceItemKey || undefined,
         itemAmount: announceItemKey ? Number(announceItemAmount) : undefined,
+        character: attachCharacter
+          ? {
+              nationality: announceCharNationality,
+              age: Number(announceCharAge),
+              gender: announceCharGender,
+              feature: announceCharFeature,
+              secretFeature: announceCharSecretFeature,
+              specialType: announceCharSpecialType,
+            }
+          : undefined,
       });
-      setMessage(`お知らせを送信しました。(配布対象: ${res.recipientCount}人)`);
+      setMessage(
+        announceRecipient === "selected"
+          ? `${selected!.displayName} に個人メッセージを送信しました。`
+          : `お知らせを送信しました。(配布対象: ${res.recipientCount}人)`
+      );
       setAnnounceTitle("");
       setAnnounceBody("");
       setAnnounceCoin("");
       setAnnounceItemKey("");
       setAnnounceItemAmount("1");
+      setAnnounceAttachChar(false);
+      setAnnounceCharNationality("");
+      setAnnounceCharGender("");
+      setAnnounceCharFeature("");
+      setAnnounceCharSecretFeature("");
     } catch (err) {
       setErrorMessage(err instanceof ApiError ? err.message : "お知らせの送信に失敗しました。");
     } finally {
@@ -293,9 +329,9 @@ export function AdminPage() {
           </form>
 
           <form onSubmit={giveCharacter} style={{ marginTop: "1.25rem" }}>
-            <h4 style={{ margin: "0 0 0.5rem" }}>🌟 運営限定キャラクターを付与</h4>
+            <h4 style={{ margin: "0 0 0.5rem" }}>⭐ 運営限定キャラクターを付与</h4>
             <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginTop: 0 }}>
-              ガチャの抽選には出てこない特別なキャラクターを直接付与します(常にMURレアリティ)。
+              ガチャの抽選には出てこない特別なキャラクターを直接付与します(常にKMR「完璧マスターランク」)。
             </p>
             <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
               <input
@@ -408,8 +444,31 @@ export function AdminPage() {
       <form className="panel" onSubmit={sendAnnouncement}>
         <h3>📢 お知らせを送信</h3>
         <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
-          全プレイヤーの「お知らせ」画面に表示されます。コイン・アイテムを付けると全員に自動配布されます。
+          全員宛にするか、検索して選択した1人だけへの個人メッセージにするか選べます。コイン・アイテム・
+          運営限定キャラクターを付けると、送信と同時に配布され「お知らせ」画面に履歴として残ります。
         </p>
+        <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.75rem" }}>
+          <span style={{ minWidth: 130 }}>宛先</span>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.3rem" }}>
+            <input
+              type="radio"
+              name="announce-recipient"
+              checked={announceRecipient === "all"}
+              onChange={() => setAnnounceRecipient("all")}
+            />
+            全員
+          </label>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.3rem" }}>
+            <input
+              type="radio"
+              name="announce-recipient"
+              checked={announceRecipient === "selected"}
+              onChange={() => setAnnounceRecipient("selected")}
+              disabled={!selected}
+            />
+            {selected ? `${selected.displayName} さんのみ` : "選択中のユーザーのみ(上でユーザーを検索・選択してください)"}
+          </label>
+        </div>
         <div className="form-field">
           <label>タイトル</label>
           <input value={announceTitle} onChange={(e) => setAnnounceTitle(e.target.value)} maxLength={60} required />
@@ -488,11 +547,127 @@ export function AdminPage() {
             />
           )}
         </div>
+        {announceRecipient === "selected" && (
+          <div style={{ marginTop: "0.75rem" }}>
+            <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+              <input
+                type="checkbox"
+                checked={announceAttachChar}
+                onChange={(e) => setAnnounceAttachChar(e.target.checked)}
+              />
+              ⭐ 運営限定キャラクター(KMR)を添える
+            </label>
+            {announceAttachChar && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    value={announceCharNationality}
+                    onChange={(e) => setAnnounceCharNationality(e.target.value)}
+                    placeholder="国籍(例: 運営)"
+                    maxLength={30}
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                      width: 140,
+                    }}
+                  />
+                  <input
+                    type="number"
+                    value={announceCharAge}
+                    onChange={(e) => setAnnounceCharAge(e.target.value)}
+                    placeholder="年齢"
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                      width: 90,
+                    }}
+                  />
+                  <input
+                    value={announceCharGender}
+                    onChange={(e) => setAnnounceCharGender(e.target.value)}
+                    placeholder="性別"
+                    maxLength={20}
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                      width: 100,
+                    }}
+                  />
+                </div>
+                <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginTop: "0.6rem" }}>
+                  <input
+                    value={announceCharFeature}
+                    onChange={(e) => setAnnounceCharFeature(e.target.value)}
+                    placeholder="特徴(例: バグ報告の功労者)"
+                    maxLength={40}
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                      flex: 1,
+                      minWidth: 160,
+                    }}
+                  />
+                  <input
+                    value={announceCharSecretFeature}
+                    onChange={(e) => setAnnounceCharSecretFeature(e.target.value)}
+                    placeholder="隠し特徴"
+                    maxLength={60}
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                      flex: 1,
+                      minWidth: 160,
+                    }}
+                  />
+                </div>
+                <div className="btn-row" style={{ alignItems: "center", marginTop: "0.6rem" }}>
+                  <select
+                    value={announceCharSpecialType}
+                    onChange={(e) => setAnnounceCharSpecialType(e.target.value as typeof SPECIAL_TYPE_ORDER[number])}
+                    style={{
+                      background: "var(--bg-panel-raised)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "0.5rem 0.6rem",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {SPECIAL_TYPE_ORDER.map((t) => (
+                      <option key={t} value={t}>
+                        {SPECIAL_TYPES[t].emoji} {SPECIAL_TYPES[t].label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <button
           className="btn btn-primary"
           type="submit"
           style={{ marginTop: "1rem" }}
-          disabled={busy || !announceTitle.trim() || !announceBody.trim()}
+          disabled={
+            busy ||
+            !announceTitle.trim() ||
+            !announceBody.trim() ||
+            (announceRecipient === "selected" && !selected)
+          }
         >
           送信する
         </button>

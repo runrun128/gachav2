@@ -13,7 +13,7 @@ async function computeRaritySummary(userId: string) {
     _count: { _all: true },
   });
 
-  const rarityCounts: Record<Rarity, number> = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0, MUR: 0 };
+  const rarityCounts: Record<Rarity, number> = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0, MUR: 0, KMR: 0 };
   let totalSpins = 0;
   let bestRarity: Rarity = "N";
 

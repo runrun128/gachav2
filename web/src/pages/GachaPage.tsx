@@ -145,6 +145,7 @@ function revealValue(r: SpinResult, stage: number): string {
 }
 
 function glowClassFor(rarity: Rarity): string {
+  if (rarity === "KMR") return "glow-kmr";
   if (rarity === "MUR") return "glow-mur";
   if (rarity === "UR") return "glow-ur";
   if (rarity === "SSR") return "glow-ssr";

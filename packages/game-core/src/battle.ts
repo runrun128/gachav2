@@ -15,6 +15,8 @@ export const RARITY_BASE_STATS: Record<Rarity, RarityBaseStats> = {
   SSR: { hp: 135, atk: 24, def: 17, spd: 19 },
   UR: { hp: 150, atk: 28, def: 20, spd: 22 },
   MUR: { hp: 170, atk: 32, def: 23, spd: 25 },
+  // 運営限定ランク。MURからの伸びしろは他のランク間と同程度に抑え、バランスを崩さないようにする
+  KMR: { hp: 190, atk: 36, def: 26, spd: 28 },
 };
 
 export const GAMBLE_SUCCESS_CHANCE = 2; // %

@@ -93,7 +93,7 @@ const giveCharacterSchema = z.object({
 });
 
 // 運営限定キャラクター: ガチャの抽選テーブルには存在せず、運営が任意のユーザーに直接付与することでのみ入手できる。
-// 常にMUR(最高レアリティ)・isExclusive=trueとして作成する。
+// 常にKMR(運営限定ランク・最高レアリティ)・isExclusive=trueとして作成する。
 adminRouter.post("/give-character", async (req, res) => {
   const parsed = giveCharacterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
@@ -103,7 +103,7 @@ adminRouter.post("/give-character", async (req, res) => {
   if (!target) return res.status(404).json({ error: "対象のユーザーが見つかりません。" });
 
   const character = await prisma.character.create({
-    data: { userId, ...traits, rarity: "MUR", isExclusive: true },
+    data: { userId, ...traits, rarity: "KMR", isExclusive: true },
   });
 
   res.status(201).json({ character });

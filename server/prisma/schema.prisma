@@ -16,10 +16,11 @@ model User {
   role         String   @default("user") // "user" | "admin"
   createdAt    DateTime @default(now())
 
-  characters          Character[]
-  items               InventoryItem[]
-  announcements       Announcement[]
-  passwordResetTokens PasswordResetToken[]
+  characters            Character[]
+  items                 InventoryItem[]
+  announcements         Announcement[]       @relation("AnnouncementAuthor")
+  receivedAnnouncements Announcement[]       @relation("AnnouncementRecipient")
+  passwordResetTokens   PasswordResetToken[]
 }
 
 model PasswordResetToken {
@@ -49,6 +50,8 @@ model Character {
   isExclusive   Boolean  @default(false)
   createdAt     DateTime @default(now())
 
+  grantAnnouncement Announcement?
+
   @@index([userId])
   @@index([userId, rarity])
 }
@@ -68,11 +71,20 @@ model Announcement {
   title      String
   body       String
   authorId   String
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author     User     @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   coinAmount Int?
   itemKey    String?
   itemAmount Int?
   createdAt  DateTime @default(now())
 
+  // 未設定なら全員宛の告知、設定されていれば特定ユーザーのみに見える個人宛メッセージ
+  recipientUserId String?
+  recipient       User?   @relation("AnnouncementRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  // 個人宛メッセージにキャラクターを添えて付与した場合、実際に作成されたCharacterへの参照
+  grantedCharacterId String?    @unique
+  grantedCharacter   Character? @relation(fields: [grantedCharacterId], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
+  @@index([recipientUserId])
 }
