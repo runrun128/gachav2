@@ -3,6 +3,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { Icon, IconName } from "./Icon";
 import { useSocket } from "../lib/socket-context";
 
 const NAV_ITEMS = [
@@ -18,11 +19,11 @@ const NAV_ITEMS = [
   { to: "/train", label: "💪 育成" },
 ];
 
-const PRIMARY_MOBILE_NAV = [
-  { to: "/", label: "ガチャ", icon: "🎰" },
-  { to: "/battle", label: "バトル", icon: "⚔️" },
-  { to: "/raid", label: "レイド", icon: "🐉" },
-  { to: "/announcements", label: "お知らせ", icon: "📢" },
+const PRIMARY_MOBILE_NAV: { to: string; label: string; icon: IconName }[] = [
+  { to: "/", label: "ガチャ", icon: "gacha" },
+  { to: "/battle", label: "バトル", icon: "battle" },
+  { to: "/raid", label: "レイド", icon: "raid" },
+  { to: "/announcements", label: "お知らせ", icon: "announcement" },
 ];
 
 function IncomingChallengeBanner() {
@@ -143,7 +144,7 @@ export function Layout() {
             className={({ isActive }) => "mobile-tab" + (isActive ? " active" : "")}
           >
             <span className="mobile-tab-icon">
-              {item.icon}
+              <Icon name={item.icon} size={22} />
               {item.to === "/announcements" && unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
               )}
@@ -156,7 +157,9 @@ export function Layout() {
           className={"mobile-tab" + (moreOpen ? " active" : "")}
           onClick={() => setMoreOpen((v) => !v)}
         >
-          <span className="mobile-tab-icon">☰</span>
+          <span className="mobile-tab-icon">
+            <Icon name="more" size={22} />
+          </span>
           <span className="mobile-tab-label">もっと</span>
         </button>
       </nav>

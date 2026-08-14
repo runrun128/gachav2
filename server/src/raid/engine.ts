@@ -36,13 +36,13 @@ import {
 } from "../battle/engine";
 import { RaidBoss, RaidFighter, RaidRoom, RaidRoundStep } from "./types";
 
-function snapshot(room: RaidRoom): RaidRoundStep {
+function snapshot(room: RaidRoom, actorId: string): RaidRoundStep {
   const participantHp: Record<string, number> = {};
   for (const pid of room.participantIds) {
     const f = room.fighters[pid];
     if (f) participantHp[pid] = f.hp;
   }
-  return { upToLine: room.log.length, participantHp, bossHp: room.boss!.hp };
+  return { upToLine: room.log.length, participantHp, bossHp: room.boss!.hp, actorId };
 }
 
 interface CharacterLike {
@@ -338,7 +338,7 @@ export function resolveParticipantActions(
       room.damageDealt[pid] = (room.damageDealt[pid] ?? 0) + damage;
       room.log.push(`　→ ${weakNote}${shieldNote}${crit ? "会心の一撃! " : ""}${boss.name} に ${damage} ダメージ!`);
     } finally {
-      steps.push(snapshot(room));
+      steps.push(snapshot(room, pid));
     }
 
     if (boss.hp <= 0) break;
@@ -351,7 +351,7 @@ export function resolveParticipantActions(
 export function bossTurn(room: RaidRoom): RaidRoundStep[] {
   if (aliveParticipantIds(room).length === 0) return [];
   bossTurnInner(room);
-  return [snapshot(room)];
+  return [snapshot(room, "boss")];
 }
 
 function bossTurnInner(room: RaidRoom) {

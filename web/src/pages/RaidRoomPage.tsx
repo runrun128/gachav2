@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BattleLog } from "../components/BattleLog";
+import { BossImage } from "../components/BossImage";
 import { FighterVitals } from "../components/FighterVitals";
 import { RarityTag } from "../components/RarityTag";
 import { useRoundReplay } from "../hooks/useRoundReplay";
@@ -14,6 +15,7 @@ interface RaidRoundStepDTO {
   upToLine: number;
   participantHp: Record<string, number>;
   bossHp: number;
+  actorId: string;
 }
 
 interface RaidFighterDTO {
@@ -224,11 +226,12 @@ export function RaidRoomPage() {
   return (
     <div className="battle-compact">
       <div className="panel">
-        <h1>
-          {state.bossEmoji} {state.roomName}
-        </h1>
+        <div className="btn-row" style={{ alignItems: "center" }}>
+          <BossImage bossKey={state.bossKey} emoji={state.bossEmoji} alt={state.bossName} size={36} />
+          <h1 style={{ margin: 0 }}>{state.roomName}</h1>
+        </div>
         <p style={{ color: "var(--text-dim)" }}>
-          {state.bossEmoji} {state.bossName}
+          {state.bossName}
           {state.phase === "round" && ` — ラウンド ${state.roundNo}`}
         </p>
 
@@ -237,8 +240,9 @@ export function RaidRoomPage() {
         )}
 
         {state.boss && (
-          <div style={{ marginTop: "0.5rem" }}>
+          <div className={`boss-panel${activeStep?.actorId === "boss" ? " is-acting" : ""}`} style={{ marginTop: "0.5rem" }}>
             <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.2rem", fontSize: "0.85rem" }}>
+              <BossImage bossKey={state.bossKey} emoji={state.bossEmoji} alt={state.bossName} size={28} />
               <strong>{state.bossName}</strong>
               <span style={{ color: "var(--text-dim)" }}>
                 HP {activeStep?.bossHp ?? state.boss.hp}/{state.boss.maxHp}
@@ -259,6 +263,7 @@ export function RaidRoomPage() {
                 isSelf={p.userId === user.id}
                 mvp={p.userId === state.mvpUserId}
                 hpOverride={activeStep?.participantHp[p.userId]}
+                isActing={activeStep?.actorId === p.userId}
               />
             ))}
           </div>
@@ -499,11 +504,13 @@ function RaidFighterPanel({
   isSelf,
   mvp,
   hpOverride,
+  isActing,
 }: {
   participant: RaidParticipantDTO;
   isSelf: boolean;
   mvp: boolean;
   hpOverride?: number;
+  isActing?: boolean;
 }) {
   const f = participant.fighter;
   const displayHp = f ? (hpOverride ?? f.hp) : 0;
@@ -517,7 +524,7 @@ function RaidFighterPanel({
   }
 
   return (
-    <div className={`fighter-card fighter-card-flex${isSelf ? " is-self" : ""}`}>
+    <div className={`fighter-card fighter-card-flex${isSelf ? " is-self" : ""}${isActing ? " is-acting" : ""}`}>
       <div style={{ color: "var(--text-dim)", fontSize: "0.78rem" }}>
         {mvp && "👑 "}
         {participant.displayName}

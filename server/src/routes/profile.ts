@@ -43,7 +43,7 @@ profileRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 const historyQuerySchema = z.object({
-  rarity: z.enum(["N", "R", "SR", "SSR", "UR", "MUR"]).optional(),
+  rarity: z.enum(["N", "R", "SR", "SSR", "UR", "MUR", "KMR"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -70,7 +70,12 @@ profileRouter.get("/history", requireAuth, async (req, res) => {
 
 profileRouter.get("/ranking", requireAuth, async (_req, res) => {
   const users = await prisma.user.findMany({ select: { id: true, displayName: true } });
-  const grouped = await prisma.character.groupBy({ by: ["userId", "rarity"], _count: { _all: true } });
+  // 運営限定キャラ(KMR)はガチャの実力とは無関係なので、ランキング集計からは除外する
+  const grouped = await prisma.character.groupBy({
+    by: ["userId", "rarity"],
+    where: { isExclusive: false },
+    _count: { _all: true },
+  });
 
   const perUser = new Map<string, { totalSpins: number; bestRarity: Rarity }>();
   for (const u of users) perUser.set(u.id, { totalSpins: 0, bestRarity: "N" });

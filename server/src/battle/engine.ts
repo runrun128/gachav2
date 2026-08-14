@@ -334,7 +334,7 @@ export function resolveRound(room: BattleRoom): RoundStep[] {
         `　→ ${crit ? "会心の一撃! " : ""}${target.displayName} に ${damage} ダメージ!${extraNote(targetDefMult)}`
       );
     } finally {
-      steps.push({ upToLine: room.log.length, hp: { [p1]: f1.hp, [p2]: f2.hp } });
+      steps.push({ upToLine: room.log.length, hp: { [p1]: f1.hp, [p2]: f2.hp }, actorId });
     }
   }
 

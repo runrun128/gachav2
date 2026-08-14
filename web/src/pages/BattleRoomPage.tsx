@@ -13,6 +13,7 @@ import { useSocket } from "../lib/socket-context";
 interface RoundStepDTO {
   upToLine: number;
   hp: Record<string, number>;
+  actorId: string;
 }
 
 interface FighterDTO {
@@ -237,17 +238,25 @@ export function BattleRoomPage() {
                     player={p}
                     isSelf={false}
                     hpOverride={activeStep?.hp[p.userId]}
+                    isActing={activeStep?.actorId === p.userId}
                   />
                 ))
               : me &&
                 opponent && (
                   <>
-                    <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
+                    <FighterPanel
+                      label="あなた"
+                      player={me}
+                      isSelf
+                      hpOverride={activeStep?.hp[me.userId]}
+                      isActing={activeStep?.actorId === me.userId}
+                    />
                     <FighterPanel
                       label="相手"
                       player={opponent}
                       isSelf={false}
                       hpOverride={activeStep?.hp[opponent.userId]}
+                      isActing={activeStep?.actorId === opponent.userId}
                     />
                   </>
                 )}
@@ -450,16 +459,20 @@ function FighterPanel({
   player,
   isSelf,
   hpOverride,
+  isActing,
 }: {
   label: string;
   player: PlayerDTO;
   isSelf: boolean;
   hpOverride?: number;
+  isActing?: boolean;
 }) {
   const f = player.fighter;
   const displayHp = f ? (hpOverride ?? f.hp) : 0;
   return (
-    <div className={`fighter-card fighter-card-flex${isSelf ? " is-self" : ""}`}>
+    <div
+      className={`fighter-card fighter-card-flex${isSelf ? " is-self" : ""}${isActing ? " is-acting" : ""}`}
+    >
       <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{label}</div>
       {f ? (
         <>

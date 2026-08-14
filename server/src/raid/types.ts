@@ -60,6 +60,8 @@ export interface RaidRoundStep {
   participantHp: Record<string, number>;
   /** このステップ終了時点のボスのHP */
   bossHp: number;
+  /** このステップで行動したファイターのuserId、またはボスの場合は"boss" */
+  actorId: string;
 }
 
 export interface RaidRoom {

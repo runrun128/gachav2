@@ -1,6 +1,7 @@
 import { BOSSES, BOSS_ORDER, BossKey } from "@identity-slot/game-core";
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { BossImage } from "../components/BossImage";
 import { useSocket } from "../lib/socket-context";
 
 interface LobbySummary {
@@ -140,9 +141,12 @@ export function RaidLobbyListPage() {
             部屋を作る
           </button>
         </div>
-        <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginTop: "0.6rem" }}>
-          {BOSSES[bossKey].emoji} {BOSSES[bossKey].name}: {BOSSES[bossKey].desc}
-        </p>
+        <div className="btn-row" style={{ alignItems: "center", marginTop: "0.6rem" }}>
+          <BossImage bossKey={bossKey} emoji={BOSSES[bossKey].emoji} alt={BOSSES[bossKey].name} size={48} />
+          <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: 0 }}>
+            {BOSSES[bossKey].name}: {BOSSES[bossKey].desc}
+          </p>
+        </div>
       </form>
 
       <div className="panel">
@@ -151,10 +155,11 @@ export function RaidLobbyListPage() {
         <div className="result-grid">
           {lobbies.map((l) => (
             <div className="card" key={l.roomId}>
-              <div style={{ fontWeight: 700 }}>{l.roomName}</div>
-              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-                {l.bossEmoji} {l.bossName}
+              <div className="btn-row" style={{ alignItems: "center", marginBottom: "0.4rem" }}>
+                <BossImage bossKey={l.bossKey} emoji={l.bossEmoji} alt={l.bossName} size={36} />
+                <div style={{ fontWeight: 700 }}>{l.roomName}</div>
               </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{l.bossName}</div>
               <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>主催: {l.hostDisplayName}</div>
               <div style={{ margin: "0.4rem 0" }}>
                 👥 {l.participantCount} / {l.maxParticipants} 人

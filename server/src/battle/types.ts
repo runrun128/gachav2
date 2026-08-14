@@ -47,6 +47,8 @@ export interface RoundStep {
   upToLine: number;
   /** このステップ終了時点の各ファイターのHP(userId をキーとする) */
   hp: Record<string, number>;
+  /** このステップで行動したファイターのuserId */
+  actorId: string;
 }
 
 export interface ChatMessage {
