@@ -4,16 +4,11 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: "file:./dev.db"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL を .env に設定してください(PostgreSQL接続文字列)}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET を .env に設定してください}
       ADMIN_SIGNUP_CODE: ${ADMIN_SIGNUP_CODE:?ADMIN_SIGNUP_CODE を .env に設定してください}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:4000}
       COOKIE_NAME: identity_slot_token
       PORT: 4000
       NODE_ENV: production
-    volumes:
-      - oracle-data:/app/server/prisma
     restart: unless-stopped
-
-volumes:
-  oracle-data:
