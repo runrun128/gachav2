@@ -1,4 +1,4 @@
-import { ItemDef } from "@identity-slot/game-core";
+import { ItemDef, SPECIAL_TYPE_ORDER, SPECIAL_TYPES } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { api, ApiError } from "../lib/api";
@@ -22,6 +22,13 @@ export function AdminPage() {
   const [itemAmount, setItemAmount] = useState("10");
   const [broadcastItemKey, setBroadcastItemKey] = useState("");
   const [broadcastAmount, setBroadcastAmount] = useState("1");
+
+  const [charNationality, setCharNationality] = useState("");
+  const [charAge, setCharAge] = useState("20");
+  const [charGender, setCharGender] = useState("");
+  const [charFeature, setCharFeature] = useState("");
+  const [charSecretFeature, setCharSecretFeature] = useState("");
+  const [charSpecialType, setCharSpecialType] = useState(SPECIAL_TYPE_ORDER[0]);
 
   const [announceTitle, setAnnounceTitle] = useState("");
   const [announceBody, setAnnounceBody] = useState("");
@@ -92,6 +99,35 @@ export function AdminPage() {
       setMessage(`${selected.displayName} に ${itemsData?.items.find((i) => i.key === itemKey)?.name} を付与しました。(所持数: ${res.quantity})`);
     } catch (err) {
       setErrorMessage(err instanceof ApiError ? err.message : "アイテム付与に失敗しました。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function giveCharacter(e: FormEvent) {
+    e.preventDefault();
+    if (!selected || !charNationality.trim() || !charGender.trim() || !charFeature.trim() || !charSecretFeature.trim())
+      return;
+    setBusy(true);
+    setMessage(null);
+    setErrorMessage(null);
+    try {
+      await api.post("/admin/give-character", {
+        userId: selected.id,
+        nationality: charNationality,
+        age: Number(charAge),
+        gender: charGender,
+        feature: charFeature,
+        secretFeature: charSecretFeature,
+        specialType: charSpecialType,
+      });
+      setMessage(`${selected.displayName} に運営限定キャラクターを付与しました。`);
+      setCharNationality("");
+      setCharGender("");
+      setCharFeature("");
+      setCharSecretFeature("");
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "キャラクター付与に失敗しました。");
     } finally {
       setBusy(false);
     }
@@ -254,6 +290,117 @@ export function AdminPage() {
             <button className="btn btn-primary" type="submit" disabled={busy || !itemKey}>
               付与
             </button>
+          </form>
+
+          <form onSubmit={giveCharacter} style={{ marginTop: "1.25rem" }}>
+            <h4 style={{ margin: "0 0 0.5rem" }}>🌟 運営限定キャラクターを付与</h4>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginTop: 0 }}>
+              ガチャの抽選には出てこない特別なキャラクターを直接付与します(常にMURレアリティ)。
+            </p>
+            <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                value={charNationality}
+                onChange={(e) => setCharNationality(e.target.value)}
+                placeholder="国籍(例: 運営)"
+                maxLength={30}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  width: 140,
+                }}
+              />
+              <input
+                type="number"
+                value={charAge}
+                onChange={(e) => setCharAge(e.target.value)}
+                placeholder="年齢"
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  width: 90,
+                }}
+              />
+              <input
+                value={charGender}
+                onChange={(e) => setCharGender(e.target.value)}
+                placeholder="性別"
+                maxLength={20}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  width: 100,
+                }}
+              />
+            </div>
+            <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginTop: "0.6rem" }}>
+              <input
+                value={charFeature}
+                onChange={(e) => setCharFeature(e.target.value)}
+                placeholder="特徴(例: 伝説の運営)"
+                maxLength={40}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  flex: 1,
+                  minWidth: 160,
+                }}
+              />
+              <input
+                value={charSecretFeature}
+                onChange={(e) => setCharSecretFeature(e.target.value)}
+                placeholder="隠し特徴"
+                maxLength={60}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  flex: 1,
+                  minWidth: 160,
+                }}
+              />
+            </div>
+            <div className="btn-row" style={{ alignItems: "center", marginTop: "0.6rem" }}>
+              <select
+                value={charSpecialType}
+                onChange={(e) => setCharSpecialType(e.target.value as typeof SPECIAL_TYPE_ORDER[number])}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                }}
+              >
+                {SPECIAL_TYPE_ORDER.map((t) => (
+                  <option key={t} value={t}>
+                    {SPECIAL_TYPES[t].emoji} {SPECIAL_TYPES[t].label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={
+                  busy || !charNationality.trim() || !charGender.trim() || !charFeature.trim() || !charSecretFeature.trim()
+                }
+              >
+                付与
+              </button>
+            </div>
           </form>
         </div>
       )}

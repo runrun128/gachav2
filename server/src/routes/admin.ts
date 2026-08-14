@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ITEMS } from "@identity-slot/game-core";
+import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
@@ -80,6 +80,33 @@ adminRouter.post("/give-item", async (req, res) => {
 const broadcastItemSchema = z.object({
   itemKey: z.string().min(1),
   amount: z.coerce.number().int().min(1).max(1_000_000),
+});
+
+const giveCharacterSchema = z.object({
+  userId: z.string().min(1),
+  nationality: z.string().min(1).max(30),
+  age: z.coerce.number().int().min(0).max(999),
+  gender: z.string().min(1).max(20),
+  feature: z.string().min(1).max(40),
+  secretFeature: z.string().min(1).max(60),
+  specialType: z.enum(SPECIAL_TYPE_ORDER as [string, ...string[]]),
+});
+
+// 運営限定キャラクター: ガチャの抽選テーブルには存在せず、運営が任意のユーザーに直接付与することでのみ入手できる。
+// 常にMUR(最高レアリティ)・isExclusive=trueとして作成する。
+adminRouter.post("/give-character", async (req, res) => {
+  const parsed = giveCharacterSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
+  const { userId, ...traits } = parsed.data;
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return res.status(404).json({ error: "対象のユーザーが見つかりません。" });
+
+  const character = await prisma.character.create({
+    data: { userId, ...traits, rarity: "MUR", isExclusive: true },
+  });
+
+  res.status(201).json({ character });
 });
 
 adminRouter.post("/broadcast-item", async (req, res) => {

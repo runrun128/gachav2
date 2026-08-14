@@ -14,6 +14,7 @@ interface CharacterRow {
   secretFeature: string | null;
   specialType: keyof typeof SPECIAL_TYPES | null;
   level: number;
+  isExclusive: boolean;
   createdAt: string;
 }
 
@@ -74,6 +75,9 @@ export function HistoryPage() {
             {data.items.map((c) => (
               <div className="card" key={c.id}>
                 <RarityTag rarity={c.rarity} /> Lv{c.level}
+                {c.isExclusive && (
+                  <span style={{ color: "var(--gold)", fontSize: "0.8rem", marginLeft: "0.4rem" }}>👑運営限定</span>
+                )}
                 <div>
                   {c.nationality}
                   {c.age}歳{c.gender}

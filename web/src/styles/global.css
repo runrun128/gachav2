@@ -25,11 +25,19 @@ html,
 body,
 #root {
   height: 100%;
+  min-height: 100dvh;
+}
+
+html {
+  /* モバイルでアドレスバーの表示/非表示により実際のビューポート高さが変化した際、
+     下部固定タブバーより下に隙間ができてもデフォルトの白背景が見えないようにする */
+  background: var(--bg);
 }
 
 body {
   margin: 0;
   background: radial-gradient(circle at top, #1a1a26 0%, var(--bg) 60%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", system-ui, sans-serif;
 }

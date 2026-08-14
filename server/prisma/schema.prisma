@@ -46,6 +46,7 @@ model Character {
   secretFeature String?
   specialType   String?
   level         Int      @default(1)
+  isExclusive   Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   @@index([userId])

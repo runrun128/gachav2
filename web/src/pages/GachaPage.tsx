@@ -35,24 +35,28 @@ export function GachaPage() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = window.setInterval(() => setCooldown((c) => Math.max(0, c - 0.1)), 100);
+    // 100ms間隔だと数秒間ページ全体が毎秒10回再描画されて重くなるため、
+    // 見た目の滑らかさを保てる範囲で間隔を広げる
+    const t = window.setInterval(() => setCooldown((c) => Math.max(0, c - 0.25)), 250);
     return () => window.clearInterval(t);
   }, [cooldown > 0]);
 
   async function spin(type: PullType) {
     if (phase === "revealing" || phase === "ten-suspense") return;
     setError(null);
+    // 結果を取得する前に演出フェーズへ切り替えておく。resultsが先に更新されて
+    // 前回のフェーズ("single-done"など)のまま一瞬新しい結果が見えてしまう
+    // (ネタバレ)のを防ぐため。
+    setStage(0);
+    setPhase(type === "ten" ? "ten-suspense" : "revealing");
     try {
       const res = await api.post<{ results: SpinResult[]; money: number }>("/gacha/spin", { type });
       setResults(res.results);
       await refresh();
 
       if (type === "ten") {
-        setPhase("ten-suspense");
         window.setTimeout(() => setPhase("ten-done"), 1400);
       } else {
-        setPhase("revealing");
-        setStage(0);
         let s = 0;
         timerRef.current = window.setInterval(() => {
           s += 1;
@@ -64,6 +68,7 @@ export function GachaPage() {
         }, 550);
       }
     } catch (err) {
+      setPhase("idle");
       if (err instanceof ApiError) {
         setError(err.message);
         const match = err.message.match(/あと([\d.]+)秒/);
@@ -99,12 +104,12 @@ export function GachaPage() {
         {error && cooldown <= 0 && <p className="error-text">{error}</p>}
       </div>
 
-      {phase === "revealing" && results[0] && (
+      {phase === "revealing" && (
         <div className="panel spin-reveal">
           <p>🎰 引いています……</p>
           {REVEAL_LABELS.map((label, i) => (
             <div key={label}>
-              {label}: {i < stage ? <strong>{revealValue(results[0], i)}</strong> : "🔒 ???"}
+              {label}: {i < stage && results[0] ? <strong>{revealValue(results[0], i)}</strong> : "🔒 ???"}
             </div>
           ))}
         </div>
