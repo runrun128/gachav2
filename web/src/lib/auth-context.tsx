@@ -7,6 +7,7 @@ export interface AuthUser {
   displayName: string;
   role: "user" | "admin";
   money: number;
+  isOwner: boolean;
 }
 
 interface AuthContextValue {
@@ -17,7 +18,6 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   promote: (code: string) => Promise<void>;
-  demote: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
 }
 
@@ -60,18 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
   }
 
-  async function demote() {
-    const me = await api.post<AuthUser>("/auth/demote");
-    setUser(me);
-  }
-
   async function deleteAccount(password: string) {
     await api.delete("/auth/me", { password });
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, promote, demote, deleteAccount }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, promote, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

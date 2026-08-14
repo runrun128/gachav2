@@ -2,6 +2,7 @@ import { ItemDef, SPECIAL_TYPE_ORDER, SPECIAL_TYPES } from "@identity-slot/game-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CSSProperties, FormEvent, useState } from "react";
 import { api, ApiError } from "../lib/api";
+import { useAuth } from "../lib/auth-context";
 
 interface AdminUser {
   id: string;
@@ -84,6 +85,7 @@ const ITEM_EFFECT_OPTIONS = [
 ] as const;
 
 export function AdminPage() {
+  const { user: currentUser } = useAuth();
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [searching, setSearching] = useState(false);
@@ -406,6 +408,28 @@ export function AdminPage() {
 
   const [confirmingDeleteUser, setConfirmingDeleteUser] = useState<string | null>(null);
   const [deleteUserBusy, setDeleteUserBusy] = useState(false);
+
+  const [confirmingDemoteUser, setConfirmingDemoteUser] = useState<string | null>(null);
+  const [demoteUserBusy, setDemoteUserBusy] = useState(false);
+
+  async function demoteSelectedUser(target: AdminUser) {
+    if (confirmingDemoteUser !== target.id) {
+      setConfirmingDemoteUser(target.id);
+      return;
+    }
+    setDemoteUserBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.post(`/admin/users/${target.id}/demote`);
+      refreshSelected({ id: target.id, role: "user" });
+      setConfirmingDemoteUser(null);
+      setMessage(`✅ ${target.displayName} の運営権限を剥奪しました。`);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "権限の剥奪に失敗しました。");
+    } finally {
+      setDemoteUserBusy(false);
+    }
+  }
 
   async function deleteSelectedUser(target: AdminUser) {
     if (confirmingDeleteUser !== target.id) {
@@ -795,6 +819,17 @@ export function AdminPage() {
           </form>
 
           <div className="btn-row" style={{ marginTop: "1rem", alignItems: "center" }}>
+            {currentUser?.isOwner && selected.role === "admin" && (
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)" }}
+                disabled={demoteUserBusy}
+                onClick={() => demoteSelectedUser(selected)}
+              >
+                {confirmingDemoteUser === selected.id ? "本当に剥奪しますか?もう一度押す" : "🔒 運営権限を剥奪"}
+              </button>
+            )}
             <button
               type="button"
               className="btn"

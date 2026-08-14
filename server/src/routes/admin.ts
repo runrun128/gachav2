@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { ITEMS, SPECIAL_TYPE_ORDER } from "@identity-slot/game-core";
 import { deleteUserAccount } from "../lib/accountDeletion";
+import { env } from "../lib/env";
 import {
   applyCustomFeature,
   applyCustomItem,
@@ -68,6 +69,23 @@ adminRouter.delete("/users/:id", async (req, res) => {
 
   await deleteUserAccount(targetId);
   res.status(204).end();
+});
+
+// 運営権限の剥奪は、なりすまし・不正な運営コード共有等への対処として
+// オーナー(OWNER_EMAIL)アカウントのみに限定する。剥奪された側は運営コードを
+// 知っていればいつでも /auth/promote で再度昇格できる。
+adminRouter.post("/users/:id/demote", async (req, res) => {
+  const requester = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!env.ownerEmail || requester?.email !== env.ownerEmail) {
+    return res.status(403).json({ error: "この操作はオーナーアカウントのみ実行できます。" });
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!target) return res.status(404).json({ error: "対象のユーザーが見つかりません。" });
+  if (target.role !== "admin") return res.status(400).json({ error: "対象は運営権限を持っていません。" });
+
+  const updated = await prisma.user.update({ where: { id: target.id }, data: { role: "user" } });
+  res.json({ id: updated.id, displayName: updated.displayName, role: updated.role });
 });
 
 const giveMoneySchema = z.object({

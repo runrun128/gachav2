@@ -70,6 +70,7 @@ interface RaidStateDTO {
   hostUserId: string;
   phase: "lobby" | "select" | "round" | "finished";
   roundNo: number;
+  spectatorCount: number;
   chatLog: ChatMessageDTO[];
   log: string[];
   roundSteps: RaidRoundStepDTO[];
@@ -150,12 +151,21 @@ export function RaidRoomPage() {
     socket.on("raid:state", onState);
     socket.on("raid:chat", onChat);
     socket.emit("raid:joinRoom", { roomId }, (res: AckResponse) => {
-      if (!res.ok) setError(res.error ?? "レイドへの参加に失敗しました。");
+      if (res.ok) return;
+      if (res.error === "このレイドの参加者ではありません。") {
+        // 参加者でなければ観戦者として参加する
+        socket.emit("raid:spectate", { roomId }, (res2: AckResponse) => {
+          if (!res2.ok) setError(res2.error ?? "観戦に失敗しました。");
+        });
+      } else {
+        setError(res.error ?? "レイドへの参加に失敗しました。");
+      }
     });
 
     return () => {
       socket.off("raid:state", onState);
       socket.off("raid:chat", onChat);
+      socket.emit("raid:unspectate", { roomId }, () => {});
     };
   }, [socket, roomId]);
 
@@ -176,6 +186,7 @@ export function RaidRoomPage() {
     return <p>読み込み中……</p>;
   }
 
+  const isSpectator = !state.participants.some((p) => p.userId === user.id);
   const me = state.participants.find((p) => p.userId === user.id);
   const isHost = state.hostUserId === user.id;
 
@@ -235,6 +246,11 @@ export function RaidRoomPage() {
           {state.bossName}
           {state.phase === "round" && ` — ラウンド ${state.roundNo}`}
         </p>
+        {isSpectator && (
+          <p style={{ color: "var(--gold)" }}>
+            👀 観戦中{state.spectatorCount > 1 && `(${state.spectatorCount}人)`}
+          </p>
+        )}
 
         {state.phase !== "lobby" && (
           <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
@@ -283,18 +299,22 @@ export function RaidRoomPage() {
               </div>
             ))}
           </div>
-          <div className="btn-row" style={{ marginTop: "1rem" }}>
-            {isHost ? (
-              <button className="btn btn-primary" onClick={startRaid}>
-                ▶️ レイド開始
+          {isSpectator ? (
+            <p style={{ color: "var(--text-dim)", marginTop: "1rem" }}>開始を待っています……</p>
+          ) : (
+            <div className="btn-row" style={{ marginTop: "1rem" }}>
+              {isHost ? (
+                <button className="btn btn-primary" onClick={startRaid}>
+                  ▶️ レイド開始
+                </button>
+              ) : (
+                <p style={{ color: "var(--text-dim)" }}>主催者の開始を待っています……</p>
+              )}
+              <button className="btn" style={{ color: "var(--danger)" }} onClick={leaveRaid}>
+                {confirmingLeave ? "本当に? もう一度押す" : "退出する"}
               </button>
-            ) : (
-              <p style={{ color: "var(--text-dim)" }}>主催者の開始を待っています……</p>
-            )}
-            <button className="btn" style={{ color: "var(--danger)" }} onClick={leaveRaid}>
-              {confirmingLeave ? "本当に? もう一度押す" : "退出する"}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -304,7 +324,7 @@ export function RaidRoomPage() {
           <p style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
             {state.participants.filter((p) => p.characterSelected).length}/{state.participants.length} 人が選択済み
           </p>
-          {me?.characterSelected ? (
+          {isSpectator || me?.characterSelected ? (
             <p style={{ color: "var(--text-dim)" }}>他の参加者の選択を待っています……</p>
           ) : (
             <CharacterPicker characters={historyData?.items ?? []} disabled={selecting} onSelect={selectCharacter} />
@@ -312,7 +332,13 @@ export function RaidRoomPage() {
         </div>
       )}
 
-      {state.phase === "round" && me?.fighter && (
+      {state.phase === "round" && isSpectator && (
+        <div className="panel">
+          <p style={{ color: "var(--text-dim)" }}>参加者の行動を待っています……</p>
+        </div>
+      )}
+
+      {state.phase === "round" && !isSpectator && me?.fighter && (
         <div className="panel">
           {me.fighter.hp <= 0 ? (
             <p style={{ color: "var(--text-dim)" }}>💀 戦闘不能です。他の参加者の行動を待っています……</p>
@@ -401,11 +427,13 @@ export function RaidRoomPage() {
       {state.phase === "finished" && (
         <div className={`panel reveal-pop${state.winner ? " glow-ssr" : ""}`}>
           <h2>{state.winner ? "🏆 討伐成功!" : `💀 討伐失敗…(${state.finishReason ?? ""})`}</h2>
-          <p>
-            🎁 報酬: <strong>+{state.rewards[user.id] ?? 0}</strong> コイン
-            {state.mvpUserId === user.id && " (👑MVPボーナス込み)"}
-          </p>
-          {state.drops[user.id] && (
+          {!isSpectator && (
+            <p>
+              🎁 報酬: <strong>+{state.rewards[user.id] ?? 0}</strong> コイン
+              {state.mvpUserId === user.id && " (👑MVPボーナス込み)"}
+            </p>
+          )}
+          {!isSpectator && state.drops[user.id] && (
             <p>
               🎁 ドロップ: {state.drops[user.id].emoji} {state.drops[user.id].name}
             </p>

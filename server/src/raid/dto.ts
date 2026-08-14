@@ -40,6 +40,7 @@ export function roomToStateDTO(room: RaidRoom) {
     hostUserId: room.hostUserId,
     phase: room.phase,
     roundNo: room.roundNo,
+    spectatorCount: room.spectatorIds.size,
     chatLog: room.chatLog,
     log: room.log,
     roundSteps: room.lastRoundSteps,

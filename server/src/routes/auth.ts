@@ -11,6 +11,17 @@ import { requireAuth } from "../middleware/auth";
 
 export const authRouter = Router();
 
+function toAuthUserJson(user: { id: string; email: string; displayName: string; role: string; money: number }) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: user.role,
+    money: user.money,
+    isOwner: !!env.ownerEmail && user.email === env.ownerEmail,
+  };
+}
+
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "パスワードは8文字以上にしてください"),
@@ -58,13 +69,7 @@ authRouter.post("/register", async (req, res) => {
 
   const token = signToken({ userId: user.id });
   res.cookie(env.cookieName, token, cookieOptions);
-  res.status(201).json({
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    money: user.money,
-  });
+  res.status(201).json(toAuthUserJson(user));
 });
 
 const loginSchema = z.object({
@@ -86,7 +91,7 @@ authRouter.post("/login", async (req, res) => {
 
   const token = signToken({ userId: user.id });
   res.cookie(env.cookieName, token, cookieOptions);
-  res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
+  res.json(toAuthUserJson(user));
 });
 
 authRouter.post("/logout", (_req, res) => {
@@ -98,7 +103,7 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(401).json({ error: "ログインが必要です。" });
-  res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
+  res.json(toAuthUserJson(user));
 });
 
 const deleteAccountSchema = z.object({ password: z.string().min(1) });
@@ -207,13 +212,5 @@ authRouter.post("/promote", requireAuth, async (req, res) => {
   }
 
   const user = await prisma.user.update({ where: { id: req.user!.id }, data: { role: "admin" } });
-  res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
-});
-
-// 運営権限を自分で外す(運営コードを再入力すればいつでも戻れる)
-authRouter.post("/demote", requireAuth, async (req, res) => {
-  if (req.user!.role !== "admin") return res.status(400).json({ error: "運営権限がありません。" });
-
-  const user = await prisma.user.update({ where: { id: req.user!.id }, data: { role: "user" } });
-  res.json({ id: user.id, email: user.email, displayName: user.displayName, role: user.role, money: user.money });
+  res.json(toAuthUserJson(user));
 });

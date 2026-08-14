@@ -16,7 +16,7 @@ interface ProfileData {
 }
 
 export function ProfilePage() {
-  const { user, promote, demote, deleteAccount } = useAuth();
+  const { user, promote, deleteAccount } = useAuth();
   const { data, isLoading, error } = useQuery({
     queryKey: ["profile"],
     queryFn: () => api.get<ProfileData>("/profile"),
@@ -25,10 +25,6 @@ export function ProfilePage() {
   const [code, setCode] = useState("");
   const [promoteError, setPromoteError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [demoteError, setDemoteError] = useState<string | null>(null);
-  const [confirmingDemote, setConfirmingDemote] = useState(false);
-  const [demoting, setDemoting] = useState(false);
 
   const [deletePassword, setDeletePassword] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -75,24 +71,6 @@ export function ProfilePage() {
     }
   }
 
-  async function onDemote() {
-    if (!confirmingDemote) {
-      setConfirmingDemote(true);
-      return;
-    }
-    setDemoteError(null);
-    setDemoting(true);
-    try {
-      await demote();
-      setConfirmingDemote(false);
-    } catch (err) {
-      setDemoteError(err instanceof ApiError ? err.message : "権限の解除に失敗しました。");
-      setConfirmingDemote(false);
-    } finally {
-      setDemoting(false);
-    }
-  }
-
   async function onDeleteAccount(e: FormEvent) {
     e.preventDefault();
     if (!confirmingDelete) {
@@ -136,7 +114,7 @@ export function ProfilePage() {
         </div>
       </div>
 
-      {user?.role !== "admin" ? (
+      {user?.role !== "admin" && (
         <form className="panel" onSubmit={onPromote}>
           <h3>⚙️ 運営コードで昇格</h3>
           <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
@@ -161,19 +139,6 @@ export function ProfilePage() {
           </div>
           {promoteError && <p className="error-text">{promoteError}</p>}
         </form>
-      ) : (
-        <div className="panel">
-          <h3>⚙️ 運営権限</h3>
-          <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
-            運営権限を外すと通常ユーザーに戻ります。またいつでも運営コードを入力すれば戻れます。
-          </p>
-          <div className="btn-row" style={{ alignItems: "center" }}>
-            <button className="btn" type="button" disabled={demoting} onClick={onDemote}>
-              {confirmingDemote ? "本当に外しますか?もう一度押す" : "運営権限を外す"}
-            </button>
-          </div>
-          {demoteError && <p className="error-text">{demoteError}</p>}
-        </div>
       )}
 
       {isPushSupported() && (

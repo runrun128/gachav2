@@ -90,4 +90,6 @@ export interface RaidRoom {
   roundTimer: NodeJS.Timeout | null;
   resolving: boolean;
   chatLog: ChatMessage[];
+  spectatorIds: Set<string>;
+  spectatorNames: Record<string, string>;
 }

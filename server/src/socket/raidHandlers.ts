@@ -55,4 +55,16 @@ export function registerRaidHandlers(_io: IOServer, socket: Socket, manager: Rai
   socket.on("raid:chat", (payload: { roomId: string; text: string }, ack?: Ack) =>
     wrap(() => manager.sendChatMessage(payload.roomId, userId, payload.text), ack)
   );
+
+  socket.on("raid:listActive", (_payload: unknown, ack?: Ack) =>
+    wrap(() => ({ raids: manager.listActiveRaids() }), ack)
+  );
+
+  socket.on("raid:spectate", (payload: { roomId: string }, ack?: Ack) =>
+    wrap(() => manager.spectate(payload.roomId, userId), ack)
+  );
+
+  socket.on("raid:unspectate", (payload: { roomId: string }, ack?: Ack) =>
+    wrap(() => manager.unspectate(payload.roomId, userId), ack)
+  );
 }

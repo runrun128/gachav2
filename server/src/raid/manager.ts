@@ -71,6 +71,8 @@ export class RaidManager {
       roundTimer: null,
       resolving: false,
       chatLog: [],
+      spectatorIds: new Set(),
+      spectatorNames: {},
     };
   }
 
@@ -97,6 +99,48 @@ export class RaidManager {
 
   private broadcastLobbies() {
     this.io.emit("raid:lobbiesUpdated", { lobbies: this.listLobbies() });
+  }
+
+  listActiveRaids() {
+    return [...this.rooms.values()]
+      .filter((r) => r.phase === "select" || r.phase === "round")
+      .map((r) => {
+        const info = BOSSES[r.bossKey];
+        return {
+          roomId: r.id,
+          roomName: r.roomName,
+          bossName: info.name,
+          bossEmoji: info.emoji,
+          phase: r.phase,
+          roundNo: r.roundNo,
+          participantCount: r.participantIds.length,
+          spectatorCount: r.spectatorIds.size,
+        };
+      });
+  }
+
+  private broadcastActiveList() {
+    this.io.emit("raid:activeUpdated", { raids: this.listActiveRaids() });
+  }
+
+  async spectate(roomId: string, userId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new UserFacingError("レイドが見つかりません。");
+    if (room.participantIds.includes(userId)) throw new UserFacingError("参加者は観戦できません。");
+    room.spectatorIds.add(userId);
+    if (!room.spectatorNames[userId]) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      room.spectatorNames[userId] = user?.displayName ?? "観戦者";
+    }
+    this.sendState(room, userId);
+    this.broadcastActiveList();
+  }
+
+  unspectate(roomId: string, userId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    room.spectatorIds.delete(userId);
+    this.broadcastActiveList();
   }
 
   async joinLobby(roomId: string, userId: string) {
@@ -150,6 +194,7 @@ export class RaidManager {
 
     this.broadcastState(room);
     this.broadcastLobbies();
+    this.broadcastActiveList();
   }
 
   async selectCharacter(roomId: string, userId: string, characterId: string) {
@@ -249,18 +294,19 @@ export class RaidManager {
   sendChatMessage(roomId: string, userId: string, text: string) {
     const room = this.rooms.get(roomId);
     if (!room) throw new UserFacingError("レイドが見つかりません。");
-    if (!room.participantIds.includes(userId)) throw new UserFacingError("このレイドの参加者ではありません。");
+    const isMember = room.participantIds.includes(userId) || room.spectatorIds.has(userId);
+    if (!isMember) throw new UserFacingError("このレイドの参加者・観戦者ではありません。");
 
     const trimmed = text.trim();
     if (!trimmed) throw new UserFacingError("メッセージを入力してください。");
     if (trimmed.length > 200) throw new UserFacingError("メッセージは200文字以内にしてください。");
 
-    const displayName = room.participantNames[userId] ?? "プレイヤー";
+    const displayName = room.participantNames[userId] ?? room.spectatorNames[userId] ?? "観戦者";
     const message = { userId, displayName, text: trimmed, at: Date.now() };
     room.chatLog.push(message);
     if (room.chatLog.length > 50) room.chatLog.shift();
 
-    for (const pid of room.participantIds) {
+    for (const pid of [...room.participantIds, ...room.spectatorIds]) {
       this.io.to(`user:${pid}`).emit("raid:chat", message);
     }
   }
@@ -471,6 +517,7 @@ export class RaidManager {
   }
 
   private cleanupRoom(room: RaidRoom) {
+    this.broadcastActiveList();
     setTimeout(() => this.rooms.delete(room.id), 5 * 60 * 1000);
   }
 
@@ -487,7 +534,7 @@ export class RaidManager {
 
   private broadcastState(room: RaidRoom) {
     const dto = roomToStateDTO(room);
-    for (const pid of room.participantIds) {
+    for (const pid of [...room.participantIds, ...room.spectatorIds]) {
       this.io.to(`user:${pid}`).emit("raid:state", dto);
     }
   }

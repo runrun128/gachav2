@@ -1,6 +1,6 @@
 import { BOSSES, BOSS_ORDER, BossKey } from "@identity-slot/game-core";
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BossImage } from "../components/BossImage";
 import { useSocket } from "../lib/socket-context";
 
@@ -14,6 +14,17 @@ interface LobbySummary {
   hostDisplayName: string;
   participantCount: number;
   maxParticipants: number;
+}
+
+interface ActiveRaid {
+  roomId: string;
+  roomName: string;
+  bossName: string;
+  bossEmoji: string;
+  phase: "select" | "round";
+  roundNo: number;
+  participantCount: number;
+  spectatorCount: number;
 }
 
 interface AckResponse<T = unknown> {
@@ -33,6 +44,7 @@ export function RaidLobbyListPage() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeRaids, setActiveRaids] = useState<ActiveRaid[]>([]);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -54,6 +66,22 @@ export function RaidLobbyListPage() {
 
     return () => {
       socket.off("raid:lobbiesUpdated", onLobbiesUpdated);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    function onActiveUpdated(payload: { raids: ActiveRaid[] }) {
+      setActiveRaids(payload.raids);
+    }
+    socket.on("raid:activeUpdated", onActiveUpdated);
+    socket.emit("raid:listActive", {}, (res: AckResponse<{ raids: ActiveRaid[] }>) => {
+      if (res.ok && res.data) setActiveRaids(res.data.raids);
+    });
+
+    return () => {
+      socket.off("raid:activeUpdated", onActiveUpdated);
     };
   }, [socket]);
 
@@ -171,6 +199,28 @@ export function RaidLobbyListPage() {
               >
                 {l.participantCount >= l.maxParticipants ? "満員" : "参加する"}
               </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>👀 観戦できるレイド</h3>
+        {activeRaids.length === 0 && <p style={{ color: "var(--text-dim)" }}>現在観戦できるレイドはありません。</p>}
+        <div className="result-grid">
+          {activeRaids.map((r) => (
+            <div className="card" key={r.roomId}>
+              <div style={{ fontWeight: 700 }}>
+                {r.bossEmoji} {r.roomName}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+                {r.bossName} ・ {r.phase === "select" ? "キャラクター選択中" : `ラウンド ${r.roundNo}`}
+                {r.spectatorCount > 0 && ` ・ 👀${r.spectatorCount}`}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>👥 {r.participantCount}人参加中</div>
+              <Link className="btn" to={`/raid/${r.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
+                観戦する
+              </Link>
             </div>
           ))}
         </div>
