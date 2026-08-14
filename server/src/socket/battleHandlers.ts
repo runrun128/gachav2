@@ -44,4 +44,20 @@ export function registerBattleHandlers(_io: IOServer, socket: Socket, manager: B
   socket.on("battle:retire", (payload: { roomId: string }, ack?: Ack) =>
     wrap(() => manager.retire(payload.roomId, userId), ack)
   );
+
+  socket.on("battle:listActive", (_payload: unknown, ack?: Ack) =>
+    wrap(() => ({ battles: manager.listActiveBattles() }), ack)
+  );
+
+  socket.on("battle:spectate", (payload: { roomId: string }, ack?: Ack) =>
+    wrap(() => manager.spectate(payload.roomId, userId), ack)
+  );
+
+  socket.on("battle:unspectate", (payload: { roomId: string }, ack?: Ack) =>
+    wrap(() => manager.unspectate(payload.roomId, userId), ack)
+  );
+
+  socket.on("battle:chat", (payload: { roomId: string; text: string }, ack?: Ack) =>
+    wrap(() => manager.sendChatMessage(payload.roomId, userId, payload.text), ack)
+  );
 }

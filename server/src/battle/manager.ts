@@ -140,12 +140,16 @@ export class BattleManager {
       selectTimer: null,
       resolving: false,
       settings,
+      spectatorIds: new Set(),
+      spectatorNames: {},
+      chatLog: [],
     };
     this.rooms.set(room.id, room);
     this.roomByUser.set(userA, room.id);
     this.roomByUser.set(userB, room.id);
 
     room.selectTimer = setTimeout(() => this.handleSelectTimeout(room.id), CHARACTER_SELECT_TIMEOUT_MS);
+    this.broadcastActiveList();
 
     return room;
   }
@@ -158,6 +162,62 @@ export class BattleManager {
   joinRoom(roomId: string, userId: string) {
     const room = this.requireRoomMember(roomId, userId);
     this.broadcastState(room);
+  }
+
+  listActiveBattles() {
+    return [...this.rooms.values()]
+      .filter((r) => r.phase !== "finished")
+      .map((r) => ({
+        roomId: r.id,
+        phase: r.phase,
+        roundNo: r.roundNo,
+        players: r.userIds.map((uid) => r.fighters[uid]?.displayName ?? "プレイヤー"),
+        spectatorCount: r.spectatorIds.size,
+      }));
+  }
+
+  private broadcastActiveList() {
+    this.io.emit("battle:activeUpdated", { battles: this.listActiveBattles() });
+  }
+
+  async spectate(roomId: string, userId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new UserFacingError("バトルが見つかりません。");
+    if (room.userIds.includes(userId)) throw new UserFacingError("対戦者は観戦できません。");
+    room.spectatorIds.add(userId);
+    if (!room.spectatorNames[userId]) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      room.spectatorNames[userId] = user?.displayName ?? "観戦者";
+    }
+    this.sendStateTo(room, userId);
+    this.broadcastActiveList();
+  }
+
+  unspectate(roomId: string, userId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    room.spectatorIds.delete(userId);
+    this.broadcastActiveList();
+  }
+
+  sendChatMessage(roomId: string, userId: string, text: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new UserFacingError("バトルが見つかりません。");
+    const isMember = room.userIds.includes(userId) || room.spectatorIds.has(userId);
+    if (!isMember) throw new UserFacingError("このバトルの参加者・観戦者ではありません。");
+
+    const trimmed = text.trim();
+    if (!trimmed) throw new UserFacingError("メッセージを入力してください。");
+    if (trimmed.length > 200) throw new UserFacingError("メッセージは200文字以内にしてください。");
+
+    const displayName = room.fighters[userId]?.displayName ?? room.spectatorNames[userId] ?? "観戦者";
+    const message = { userId, displayName, text: trimmed, at: Date.now() };
+    room.chatLog.push(message);
+    if (room.chatLog.length > 50) room.chatLog.shift();
+
+    for (const uid of [...room.userIds, ...room.spectatorIds]) {
+      this.emitToUser(uid, "battle:chat", message);
+    }
   }
 
   async selectCharacter(roomId: string, userId: string, characterId: string) {
@@ -364,6 +424,7 @@ export class BattleManager {
     for (const uid of room.userIds) {
       if (this.roomByUser.get(uid) === room.id) this.roomByUser.delete(uid);
     }
+    this.broadcastActiveList();
     setTimeout(() => this.rooms.delete(room.id), 5 * 60 * 1000);
   }
 
@@ -394,9 +455,13 @@ export class BattleManager {
 
   private broadcastState(room: BattleRoom) {
     const dto = roomToStateDTO(room);
-    for (const uid of room.userIds) {
+    for (const uid of [...room.userIds, ...room.spectatorIds]) {
       this.emitToUser(uid, "battle:state", dto);
     }
+  }
+
+  private sendStateTo(room: BattleRoom, userId: string) {
+    this.emitToUser(userId, "battle:state", roomToStateDTO(room));
   }
 
   private emitToUser(userId: string, event: string, payload: unknown) {

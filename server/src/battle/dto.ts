@@ -11,6 +11,8 @@ export function roomToStateDTO(room: BattleRoom) {
     roundSteps: room.lastRoundSteps,
     winnerUserId: room.winnerUserId,
     rewards: room.rewards,
+    spectatorCount: room.spectatorIds.size,
+    chatLog: room.chatLog,
     players: [p1, p2].map((pid) => {
       const f = room.fighters[pid];
       return {

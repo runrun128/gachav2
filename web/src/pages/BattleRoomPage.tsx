@@ -1,6 +1,6 @@
 import { ItemDef, Rarity, SPECIAL_TYPES, SpecialType } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BattleLog } from "../components/BattleLog";
 import { FighterVitals } from "../components/FighterVitals";
@@ -44,6 +44,13 @@ interface PlayerDTO {
   fighter: FighterDTO | null;
 }
 
+interface ChatMessageDTO {
+  userId: string;
+  displayName: string;
+  text: string;
+  at: number;
+}
+
 interface BattleStateDTO {
   roomId: string;
   phase: "select" | "round" | "finished";
@@ -53,6 +60,8 @@ interface BattleStateDTO {
   roundSteps: RoundStepDTO[];
   winnerUserId: string | "draw" | null;
   rewards: Record<string, number>;
+  spectatorCount: number;
+  chatLog: ChatMessageDTO[];
   players: PlayerDTO[];
 }
 
@@ -86,6 +95,9 @@ export function BattleRoomPage() {
   const [confirmingRetire, setConfirmingRetire] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessageDTO[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   const { data: historyData } = useQuery({
     queryKey: ["battle-characters"],
@@ -105,6 +117,7 @@ export function BattleRoomPage() {
     function onState(payload: BattleStateDTO) {
       if (payload.roomId === roomId) {
         setState(payload);
+        setChatMessages(payload.chatLog);
         setError(null);
         setShowItemPicker(false);
         setConfirmingRetire(false);
@@ -112,13 +125,27 @@ export function BattleRoomPage() {
         setSubmitting(false);
       }
     }
+    function onChat(payload: ChatMessageDTO) {
+      setChatMessages((prev) => [...prev, payload].slice(-50));
+    }
     socket.on("battle:state", onState);
+    socket.on("battle:chat", onChat);
     socket.emit("battle:joinRoom", { roomId }, (res: AckResponse) => {
-      if (!res.ok) setError(res.error ?? "バトルへの参加に失敗しました。");
+      if (res.ok) return;
+      if (res.error === "このバトルの参加者ではありません。") {
+        // 対戦者でなければ観戦者として参加する
+        socket.emit("battle:spectate", { roomId }, (res2: AckResponse) => {
+          if (!res2.ok) setError(res2.error ?? "観戦に失敗しました。");
+        });
+      } else {
+        setError(res.error ?? "バトルへの参加に失敗しました。");
+      }
     });
 
     return () => {
       socket.off("battle:state", onState);
+      socket.off("battle:chat", onChat);
+      socket.emit("battle:unspectate", { roomId }, () => {});
     };
   }, [socket, roomId]);
 
@@ -139,10 +166,11 @@ export function BattleRoomPage() {
     return <p>読み込み中……</p>;
   }
 
+  const isSpectator = !state.players.some((p) => p.userId === user.id);
   const me = state.players.find((p) => p.userId === user.id);
   const opponent = state.players.find((p) => p.userId !== user.id);
 
-  if (!me || !opponent) {
+  if (!isSpectator && (!me || !opponent)) {
     return <p>読み込み中……</p>;
   }
 
@@ -178,6 +206,14 @@ export function BattleRoomPage() {
     socket?.emit("battle:retire", { roomId }, () => {});
   }
 
+  function sendChat(e: FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim() || !socket) return;
+    socket.emit("battle:chat", { roomId, text: chatInput }, (res: AckResponse) => {
+      if (res.ok) setChatInput("");
+    });
+  }
+
   return (
     <div className="battle-compact">
       <div className="panel">
@@ -188,15 +224,42 @@ export function BattleRoomPage() {
             {!state.settings.itemsAllowed && " ・ アイテム禁止"}
           </p>
         )}
+        {isSpectator && <p style={{ color: "var(--gold)" }}>👀 観戦中{state.spectatorCount > 1 && `(${state.spectatorCount}人)`}</p>}
         <BattleLog log={state.log} visibleLogCount={visibleLogCount} previousLogCount={previousLogCount} />
 
         <div className="btn-row" style={{ alignItems: "stretch", marginTop: "0.75rem" }}>
-          <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
-          <FighterPanel label="相手" player={opponent} isSelf={false} hpOverride={activeStep?.hp[opponent.userId]} />
+          {isSpectator
+            ? state.players.map((p) => (
+                <FighterPanel
+                  key={p.userId}
+                  label=""
+                  player={p}
+                  isSelf={false}
+                  hpOverride={activeStep?.hp[p.userId]}
+                />
+              ))
+            : me &&
+              opponent && (
+                <>
+                  <FighterPanel label="あなた" player={me} isSelf hpOverride={activeStep?.hp[me.userId]} />
+                  <FighterPanel
+                    label="相手"
+                    player={opponent}
+                    isSelf={false}
+                    hpOverride={activeStep?.hp[opponent.userId]}
+                  />
+                </>
+              )}
         </div>
       </div>
 
-      {state.phase === "select" && (
+      {state.phase === "select" && isSpectator && (
+        <div className="panel">
+          <p style={{ color: "var(--text-dim)" }}>キャラクター選択中です……</p>
+        </div>
+      )}
+
+      {state.phase === "select" && !isSpectator && me && (
         <div className="panel">
           <h3>バトルに使うキャラクターを選択してください</h3>
           {me.characterSelected ? (
@@ -224,7 +287,13 @@ export function BattleRoomPage() {
         </div>
       )}
 
-      {state.phase === "round" && (
+      {state.phase === "round" && isSpectator && (
+        <div className="panel">
+          <p style={{ color: "var(--text-dim)" }}>両者の行動を待っています……</p>
+        </div>
+      )}
+
+      {state.phase === "round" && !isSpectator && me && (
         <div className="panel">
           {me.actionSubmitted ? (
             <p style={{ color: "var(--text-dim)" }}>✅ 行動を選択しました。相手の行動を待っています……</p>
@@ -299,22 +368,76 @@ export function BattleRoomPage() {
       )}
 
       {state.phase === "finished" && (
-        <div className={`panel reveal-pop${state.winnerUserId === user.id ? " glow-ssr" : ""}`}>
+        <div className={`panel reveal-pop${!isSpectator && state.winnerUserId === user.id ? " glow-ssr" : ""}`}>
           <h2>
             {state.winnerUserId === "draw"
               ? "💥 DRAW!"
-              : state.winnerUserId === user.id
-                ? "🏆 あなたの勝利!"
-                : "敗北……"}
+              : isSpectator
+                ? `🏆 ${state.players.find((p) => p.userId === state.winnerUserId)?.fighter?.displayName ?? "勝者"} の勝利!`
+                : state.winnerUserId === user.id
+                  ? "🏆 あなたの勝利!"
+                  : "敗北……"}
           </h2>
-          <p>
-            🎁 報酬: <strong>+{state.rewards[user.id] ?? 0}</strong> コイン
-          </p>
+          {!isSpectator && (
+            <p>
+              🎁 報酬: <strong>+{state.rewards[user.id] ?? 0}</strong> コイン
+            </p>
+          )}
           <button className="btn btn-primary" onClick={() => navigate("/battle")}>
             ロビーに戻る
           </button>
         </div>
       )}
+
+      <div className="panel">
+        <button type="button" className="btn" onClick={() => setChatOpen((v) => !v)}>
+          💬 チャット{chatMessages.length > 0 && !chatOpen ? `(${chatMessages.length})` : ""}
+        </button>
+        {chatOpen && (
+          <div style={{ marginTop: "0.6rem" }}>
+            <div
+              style={{
+                maxHeight: "8rem",
+                overflowY: "auto",
+                background: "var(--bg-panel-raised)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: "0.5rem 0.6rem",
+                fontSize: "0.82rem",
+              }}
+            >
+              {chatMessages.length === 0 ? (
+                <span style={{ color: "var(--text-dim)" }}>まだメッセージはありません。</span>
+              ) : (
+                chatMessages.map((m, i) => (
+                  <div key={i} style={{ marginBottom: "0.25rem" }}>
+                    <strong>{m.displayName}</strong>: {m.text}
+                  </div>
+                ))
+              )}
+            </div>
+            <form onSubmit={sendChat} className="btn-row" style={{ marginTop: "0.5rem" }}>
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="メッセージを入力"
+                maxLength={200}
+                style={{
+                  background: "var(--bg-panel-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.6rem",
+                  color: "var(--text)",
+                  flex: 1,
+                }}
+              />
+              <button className="btn btn-primary" type="submit" disabled={!chatInput.trim()}>
+                送信
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -49,6 +49,13 @@ export interface RoundStep {
   hp: Record<string, number>;
 }
 
+export interface ChatMessage {
+  userId: string;
+  displayName: string;
+  text: string;
+  at: number;
+}
+
 export interface BattleRoom {
   id: string;
   createdAt: number;
@@ -65,6 +72,9 @@ export interface BattleRoom {
   selectTimer: NodeJS.Timeout | null;
   resolving: boolean;
   settings: BattleSettings;
+  spectatorIds: Set<string>;
+  spectatorNames: Record<string, string>;
+  chatLog: ChatMessage[];
 }
 
 export interface PendingChallenge {

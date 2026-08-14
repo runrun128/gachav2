@@ -10,6 +10,14 @@ interface UserResult {
   online: boolean;
 }
 
+interface ActiveBattle {
+  roomId: string;
+  phase: "select" | "round" | "finished";
+  roundNo: number;
+  players: string[];
+  spectatorCount: number;
+}
+
 interface AckResponse<T = unknown> {
   ok: boolean;
   data?: T;
@@ -26,6 +34,7 @@ export function BattleLobbyPage() {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [maxRounds, setMaxRounds] = useState(String(MAX_BATTLE_ROUNDS));
   const [itemsAllowed, setItemsAllowed] = useState(true);
+  const [activeBattles, setActiveBattles] = useState<ActiveBattle[]>([]);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -45,6 +54,20 @@ export function BattleLobbyPage() {
     socket.on("battle:challengeUpdate", onUpdate);
     return () => {
       socket.off("battle:challengeUpdate", onUpdate);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    function onActiveUpdated(payload: { battles: ActiveBattle[] }) {
+      setActiveBattles(payload.battles);
+    }
+    socket.on("battle:activeUpdated", onActiveUpdated);
+    socket.emit("battle:listActive", {}, (res: AckResponse<{ battles: ActiveBattle[] }>) => {
+      if (res.ok && res.data) setActiveBattles(res.data.battles);
+    });
+    return () => {
+      socket.off("battle:activeUpdated", onActiveUpdated);
     };
   }, [socket]);
 
@@ -175,6 +198,29 @@ export function BattleLobbyPage() {
           <p>⏳ <strong>{outgoing.targetName}</strong> に挑戦を送りました。応答を待っています……</p>
         </div>
       )}
+
+      <div className="panel">
+        <h3>👀 観戦できるバトル</h3>
+        {activeBattles.length === 0 && (
+          <p style={{ color: "var(--text-dim)" }}>現在観戦できるバトルはありません。</p>
+        )}
+        <div className="result-grid">
+          {activeBattles.map((b) => (
+            <div className="card" key={b.roomId}>
+              <div style={{ fontWeight: 700 }}>
+                {b.players[0] ?? "?"} vs {b.players[1] ?? "?"}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
+                {b.phase === "select" ? "キャラクター選択中" : `ラウンド ${b.roundNo}`}
+                {b.spectatorCount > 0 && ` ・ 👀${b.spectatorCount}`}
+              </div>
+              <Link className="btn" to={`/battle/${b.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
+                観戦する
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
