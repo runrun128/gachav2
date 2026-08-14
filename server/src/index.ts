@@ -37,8 +37,20 @@ app.use("/api/admin", adminRouter);
 if (process.env.NODE_ENV === "production") {
   const webDist = path.resolve(__dirname, "../../web/dist");
   if (existsSync(webDist)) {
-    app.use(express.static(webDist));
+    // index.htmlはデプロイのたびに中身(参照するJS/CSSのハッシュ)が変わるため、
+    // 途中の何らかのキャッシュ層(ブラウザ/CDN等)に古い版を留められないよう明示的にno-cacheにする。
+    // ハッシュ付きの静的アセット自体は内容が変わらない限り不変なので通常のキャッシュのままでよい。
+    app.use(
+      express.static(webDist, {
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith("index.html")) {
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      })
+    );
     app.get(/^(?!\/api).*/, (_req, res) => {
+      res.set("Cache-Control", "no-cache");
       res.sendFile(path.join(webDist, "index.html"));
     });
   }
