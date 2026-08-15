@@ -859,6 +859,82 @@ button.card:focus-visible {
   font-size: 0.82rem;
 }
 
+.shop-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rc, var(--text-dim));
+}
+
+.shop-section-title::before {
+  content: "";
+  width: 4px;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--rc, var(--text-dim));
+}
+
+.shop-card {
+  position: relative;
+  border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--rc, #d4af37) 45%, var(--border));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--rc, #d4af37) 14%, var(--bg-panel-raised)) 0%, #101018 78%);
+  padding: 1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.shop-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--rc, #d4af37);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--rc, #d4af37) 32%, transparent);
+}
+
+.shop-card-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.shop-card-name {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 0.3rem;
+}
+
+.shop-card-desc {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0.75rem;
+}
+
+.shop-price-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 800;
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.shop-tier-badge {
+  position: absolute;
+  top: -0.55rem;
+  right: 0.6rem;
+  background: var(--rc, var(--gold));
+  color: #14141e;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
 .mini-ticket {
   position: relative;
   overflow: hidden;

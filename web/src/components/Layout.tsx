@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { to: "/battle", label: "⚔️ バトル" },
   { to: "/raid", label: "🐉 レイド" },
   { to: "/profile", label: "🪪 プロフィール" },
-  { to: "/history", label: "📜 履歴" },
+  { to: "/history", label: "📖 図鑑" },
   { to: "/ranking", label: "🏆 ランキング" },
   { to: "/shop", label: "🛒 ショップ" },
   { to: "/inventory", label: "🎒 持ち物" },

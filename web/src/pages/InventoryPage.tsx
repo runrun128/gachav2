@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { TIER_COLOR, accentStyle } from "../lib/itemDisplay";
 
 type InventoryItemRow = ItemDef & { itemKey: string; quantity: number };
 
@@ -49,16 +50,18 @@ export function InventoryPage() {
       )}
 
       {groups.map((g) => (
-        <div key={g.tier} style={{ marginTop: "1rem" }}>
-          <h4 style={{ margin: "0 0 0.5rem", textTransform: "uppercase", color: "var(--text-dim)" }}>{g.tier}</h4>
+        <div key={g.tier} style={{ marginTop: "1.2rem" }}>
+          <h4 className="shop-section-title" style={accentStyle(TIER_COLOR[g.tier])}>
+            {g.tier}
+          </h4>
           <div className="result-grid">
             {g.items.map((item) => (
-              <div className="card" key={item.itemKey}>
-                <div style={{ fontWeight: 700 }}>
-                  {item.emoji} {item.name} ×{item.quantity}
-                </div>
-                <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", marginTop: "0.4rem" }}>{item.desc}</div>
-                <div className="btn-row" style={{ alignItems: "center", marginTop: "0.6rem" }}>
+              <div className="shop-card" style={accentStyle(TIER_COLOR[g.tier])} key={item.itemKey}>
+                <span className="shop-tier-badge">×{item.quantity}</span>
+                <div className="shop-card-icon">{item.emoji}</div>
+                <div className="shop-card-name">{item.name}</div>
+                <div className="shop-card-desc">{item.desc}</div>
+                <div className="btn-row" style={{ alignItems: "center" }}>
                   <input
                     type="number"
                     min={1}

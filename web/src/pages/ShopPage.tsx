@@ -1,9 +1,10 @@
-import { ItemDef, ItemTier, Rarity, characterSellPrice, isCharacterSellable } from "@identity-slot/game-core";
+import { ItemDef, ItemTier, RARITIES, Rarity, characterSellPrice, isCharacterSellable } from "@identity-slot/game-core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { RarityTag } from "../components/RarityTag";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { TIER_COLOR, accentStyle } from "../lib/itemDisplay";
 
 const ITEM_TIER_ORDER: ItemTier[] = ["shop", "common", "uncommon", "rare", "legendary"];
 
@@ -99,7 +100,7 @@ export function ShopPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [selectedItemKey, setSelectedItemKey] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
-  const [itemPrice, setItemPrice] = useState("1000");
+  const [price, setPrice] = useState("1000");
   const [listing, setListing] = useState(false);
 
   const listedCharacterIds = new Set(
@@ -109,7 +110,7 @@ export function ShopPage() {
     (c) => isCharacterSellable(c.rarity, c.isExclusive) && !listedCharacterIds.has(c.id)
   );
   const selectedCharacter = sellableCharacters.find((c) => c.id === selectedCharacterId);
-  const fixedCharacterPrice = selectedCharacter
+  const referenceSellPrice = selectedCharacter
     ? characterSellPrice(selectedCharacter.rarity, selectedCharacter.level)
     : null;
 
@@ -121,20 +122,20 @@ export function ShopPage() {
     try {
       if (kind === "character") {
         if (!selectedCharacterId) return;
-        await api.post("/market/list", { kind: "character", characterId: selectedCharacterId });
+        await api.post("/market/list", { kind: "character", characterId: selectedCharacterId, price: Number(price) });
       } else {
         if (!selectedItemKey) return;
         await api.post("/market/list", {
           kind: "item",
           itemKey: selectedItemKey,
           itemQuantity: Number(itemQuantity),
-          price: Number(itemPrice),
+          price: Number(price),
         });
       }
       setSelectedCharacterId("");
       setSelectedItemKey("");
       setItemQuantity("1");
-      setItemPrice("1000");
+      setPrice("1000");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["market"] }),
         queryClient.invalidateQueries({ queryKey: ["market-characters"] }),
@@ -204,17 +205,19 @@ export function ShopPage() {
           {shopMessage && <p style={{ color: "var(--success)" }}>{shopMessage}</p>}
           {shopLoading && <p>読み込み中……</p>}
           {shopGroups.map((g) => (
-            <div key={g.tier} style={{ marginTop: "1rem" }}>
-              <h4 style={{ margin: "0 0 0.5rem", textTransform: "uppercase", color: "var(--text-dim)" }}>{g.tier}</h4>
+            <div key={g.tier} style={{ marginTop: "1.2rem" }}>
+              <h4 className="shop-section-title" style={accentStyle(TIER_COLOR[g.tier])}>
+                {g.tier}
+              </h4>
               <div className="result-grid">
                 {g.items.map((item) => (
-                  <div className="card" key={item.key}>
-                    <div style={{ fontWeight: 700 }}>
-                      {item.emoji} {item.name}
-                    </div>
-                    <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", margin: "0.4rem 0" }}>{item.desc}</div>
-                    <div className="btn-row" style={{ alignItems: "center" }}>
-                      <span style={{ color: "var(--gold)" }}>💰{item.price}</span>
+                  <div className="shop-card" style={accentStyle(TIER_COLOR[g.tier])} key={item.key}>
+                    <span className="shop-tier-badge">{g.tier}</span>
+                    <div className="shop-card-icon">{item.emoji}</div>
+                    <div className="shop-card-name">{item.name}</div>
+                    <div className="shop-card-desc">{item.desc}</div>
+                    <div className="btn-row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                      <span className="shop-price-tag">💰{item.price}</span>
                       <button className="btn btn-primary" disabled={busyKey === item.key} onClick={() => buy(item.key)}>
                         購入
                       </button>
@@ -260,15 +263,11 @@ export function ShopPage() {
                     </option>
                   ))}
                 </select>
-                <p style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginTop: "0.5rem" }}>
-                  価格はレアリティ・レベルで自動的に決まります(売り手が自由に値付けすることはできません)。
-                  {fixedCharacterPrice !== null && (
-                    <>
-                      {" "}
-                      出品価格: <strong style={{ color: "var(--gold)" }}>💰{fixedCharacterPrice}</strong>
-                    </>
-                  )}
-                </p>
+                {referenceSellPrice !== null && (
+                  <p style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginTop: "0.5rem" }}>
+                    参考: システム買取価格は💰{referenceSellPrice}です。
+                  </p>
+                )}
               </>
             ) : (
               <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
@@ -292,30 +291,35 @@ export function ShopPage() {
                   placeholder="個数"
                   style={{ ...inputStyle, width: 90 }}
                 />
-                <input
-                  type="number"
-                  min={1}
-                  value={itemPrice}
-                  onChange={(e) => setItemPrice(e.target.value)}
-                  placeholder="価格"
-                  style={{ ...inputStyle, width: 140 }}
-                />
-                <span style={{ color: "var(--text-dim)" }}>コイン</span>
               </div>
             )}
+
+            <div className="btn-row" style={{ alignItems: "center", marginTop: "0.6rem" }}>
+              <input
+                type="number"
+                min={1}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="価格"
+                style={{ ...inputStyle, width: 140 }}
+              />
+              <span style={{ color: "var(--text-dim)" }}>コイン</span>
+            </div>
 
             <button
               className="btn btn-primary"
               type="submit"
               style={{ marginTop: "0.8rem" }}
-              disabled={listing || (kind === "character" ? !selectedCharacterId : !selectedItemKey || !itemPrice)}
+              disabled={listing || (kind === "character" ? !selectedCharacterId : !selectedItemKey) || !price}
             >
               出品する
             </button>
           </form>
 
           <div className="panel">
-            <h3>🧑 キャラクター出品</h3>
+            <h4 className="shop-section-title" style={accentStyle("#f1c40f")}>
+              🧑 キャラクター出品
+            </h4>
             <div className="result-grid">
               {characterListings.map((l) => (
                 <MarketListingCard
@@ -332,7 +336,9 @@ export function ShopPage() {
           </div>
 
           <div className="panel">
-            <h3>🎒 アイテム出品</h3>
+            <h4 className="shop-section-title" style={accentStyle(TIER_COLOR.shop)}>
+              🎒 アイテム出品
+            </h4>
             <div className="result-grid">
               {itemListings.map((l) => (
                 <MarketListingCard
@@ -366,31 +372,39 @@ function MarketListingCard({
   onBuy: () => void;
   onCancel: () => void;
 }) {
+  const accent =
+    l.kind === "character" && l.character ? RARITIES[l.character.rarity].color : TIER_COLOR[l.item?.tier ?? "shop"];
+
   return (
-    <div className="card">
+    <div className="shop-card" style={accentStyle(accent)}>
       {l.kind === "character" && l.character ? (
         <>
           <div style={{ fontWeight: 700 }}>
             <RarityTag rarity={l.character.rarity} /> Lv{l.character.level}
           </div>
-          <div style={{ color: "var(--text-dim)", fontSize: "0.82rem" }}>
+          <div style={{ color: "var(--text-dim)", fontSize: "0.82rem", marginTop: "0.3rem" }}>
             {l.character.nationality}
             {l.character.age}歳{l.character.gender} / 🎭{l.character.feature}
           </div>
         </>
       ) : l.item ? (
-        <div style={{ fontWeight: 700 }}>
-          {l.item.emoji} {l.item.name} ×{l.itemQuantity}
-        </div>
+        <>
+          <div className="shop-card-icon">{l.item.emoji}</div>
+          <div className="shop-card-name">
+            {l.item.name} ×{l.itemQuantity}
+          </div>
+        </>
       ) : (
-        <div style={{ fontWeight: 700 }}>⚠️ {l.itemKey}(不明)</div>
+        <div className="shop-card-name">⚠️ {l.itemKey}(不明)</div>
       )}
-      <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.3rem 0" }}>出品者: {l.sellerDisplayName}</div>
-      <div style={{ color: "var(--gold)" }}>💰 {l.price} コイン</div>
-      <div className="btn-row" style={{ marginTop: "0.5rem" }}>
+      <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.5rem 0 0.3rem" }}>
+        出品者: {l.sellerDisplayName}
+      </div>
+      <div className="btn-row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <span className="shop-price-tag">💰{l.price}</span>
         {isMine ? (
           <button className="btn" style={{ color: "var(--danger)" }} disabled={busy} onClick={onCancel}>
-            出品を取り消す
+            取り消す
           </button>
         ) : (
           <button className="btn btn-primary" disabled={busy} onClick={onBuy}>
