@@ -6,6 +6,8 @@ import {
   SPECIAL_TYPES,
   SPECIAL_TYPE_ORDER,
   SpecialType,
+  characterSellPrice,
+  isCharacterSellable,
   isSecretFeatureRarity,
   trainCost,
 } from "@identity-slot/game-core";
@@ -36,6 +38,7 @@ export function TrainPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, SpecialType>>({});
+  const [confirmingSellId, setConfirmingSellId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["train-characters"],
@@ -56,6 +59,26 @@ export function TrainPage() {
       await Promise.all([queryClient.invalidateQueries({ queryKey: ["train-characters"] }), refresh()]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "育成に失敗しました。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sell(id: string) {
+    if (busy) return;
+    if (confirmingSellId !== id) {
+      setConfirmingSellId(id);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/characters/${id}/sell`);
+      setConfirmingSellId(null);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["train-characters"] }), refresh()]);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "売却に失敗しました。");
+      setConfirmingSellId(null);
     } finally {
       setBusy(false);
     }
@@ -109,6 +132,18 @@ export function TrainPage() {
                   <button className="btn" disabled={busy || c.level >= MAX_TRAIN_LEVEL} onClick={() => train(c.id)}>
                     {c.level >= MAX_TRAIN_LEVEL ? "最大レベル" : `育成(${trainCost(c.level)}コイン)`}
                   </button>
+                  {isCharacterSellable(c.rarity, c.isExclusive) && (
+                    <button
+                      className="btn"
+                      style={{ color: "var(--danger)" }}
+                      disabled={busy}
+                      onClick={() => sell(c.id)}
+                    >
+                      {confirmingSellId === c.id
+                        ? "本当に売却しますか?もう一度押す"
+                        : `売却(💰${characterSellPrice(c.rarity, c.level)})`}
+                    </button>
+                  )}
                 </div>
 
                 {isSecretFeatureRarity(c.rarity) &&

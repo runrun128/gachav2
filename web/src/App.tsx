@@ -10,6 +10,7 @@ import { GachaPage } from "./pages/GachaPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RaidLobbyListPage } from "./pages/RaidLobbyListPage";
 import { RaidRoomPage } from "./pages/RaidRoomPage";
@@ -17,6 +18,8 @@ import { RankingPage } from "./pages/RankingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ShopPage } from "./pages/ShopPage";
+import { TradeLobbyPage } from "./pages/TradeLobbyPage";
+import { TradeRoomPage } from "./pages/TradeRoomPage";
 import { TrainPage } from "./pages/TrainPage";
 
 export function App() {
@@ -45,6 +48,9 @@ export function App() {
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/train" element={<TrainPage />} />
+        <Route path="/trade" element={<TradeLobbyPage />} />
+        <Route path="/trade/:roomId" element={<TradeRoomPage />} />
+        <Route path="/market" element={<MarketPage />} />
         <Route
           path="/admin"
           element={

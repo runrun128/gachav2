@@ -2,8 +2,11 @@ import { Router } from "express";
 import { z } from "zod";
 import {
   MAX_TRAIN_LEVEL,
+  Rarity,
   SETSPECIAL_COST,
   SPECIAL_TYPE_ORDER,
+  characterSellPrice,
+  isCharacterSellable,
   isSecretFeatureRarity,
   trainCost,
 } from "@identity-slot/game-core";
@@ -31,7 +34,7 @@ function checkTrainCooldown(userId: string): string | null {
 // 所持キャラクター全件を返す(選べるキャラが「直近のものだけ」にならないようにするため)。
 charactersRouter.get("/characters/mine", requireAuth, async (req, res) => {
   const characters = await prisma.character.findMany({
-    where: { userId: req.user!.id },
+    where: { userId: req.user!.id, soldAt: null },
     orderBy: { createdAt: "desc" },
   });
   res.json({ items: characters });
@@ -42,7 +45,7 @@ charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => 
   const cooldownError = checkTrainCooldown(userId);
   if (cooldownError) return res.status(429).json({ error: cooldownError });
 
-  const character = await prisma.character.findFirst({ where: { id: req.params.id, userId } });
+  const character = await prisma.character.findFirst({ where: { id: req.params.id, userId, soldAt: null } });
   if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
 
   if (character.level >= MAX_TRAIN_LEVEL) {
@@ -88,6 +91,43 @@ charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => 
   }
 });
 
+// 売却は物理削除ではなくsoldAtを立てるだけ(総ガチャ回数・最高レアリティ等の生涯実績は
+// soldAtで絞り込まずに算出するため、手放しても過去の記録には影響しない)。
+charactersRouter.post("/characters/:id/sell", requireAuth, async (req, res) => {
+  const userId = req.user!.id;
+  const cooldownError = checkTrainCooldown(userId);
+  if (cooldownError) return res.status(429).json({ error: cooldownError });
+
+  const character = await prisma.character.findFirst({ where: { id: req.params.id, userId, soldAt: null } });
+  if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
+
+  const rarity = character.rarity as Rarity;
+  if (!isCharacterSellable(rarity, character.isExclusive)) {
+    return res.status(400).json({ error: "このキャラクターは売却できません。" });
+  }
+  const listed = await prisma.tradeListing.findFirst({ where: { characterId: character.id } });
+  if (listed) return res.status(400).json({ error: "マーケットに出品中のキャラクターは売却できません。先に出品を取り消してください。" });
+
+  const price = characterSellPrice(rarity, character.level);
+
+  try {
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const characterUpdate = await tx.character.updateMany({
+        where: { id: character.id, userId, soldAt: null },
+        data: { soldAt: new Date() },
+      });
+      if (characterUpdate.count === 0) throw new Error("TRAIN_CONFLICT");
+      return tx.user.update({ where: { id: userId }, data: { money: { increment: price } } });
+    });
+    res.json({ money: updatedUser.money, price });
+  } catch (err) {
+    if (err instanceof Error && err.message === "TRAIN_CONFLICT") {
+      return res.status(409).json({ error: "他の操作と競合しました。もう一度お試しください。" });
+    }
+    throw err;
+  }
+});
+
 const setSpecialSchema = z.object({
   specialType: z.enum(SPECIAL_TYPE_ORDER as [string, ...string[]]),
 });
@@ -100,7 +140,7 @@ charactersRouter.post("/characters/:id/special", requireAuth, async (req, res) =
   const cooldownError = checkTrainCooldown(userId);
   if (cooldownError) return res.status(429).json({ error: cooldownError });
 
-  const character = await prisma.character.findFirst({ where: { id: req.params.id, userId } });
+  const character = await prisma.character.findFirst({ where: { id: req.params.id, userId, soldAt: null } });
   if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
   if (!isSecretFeatureRarity(character.rarity as any)) {
     return res.status(400).json({ error: "SSR以上のキャラクターのみ、とくぎ属性を変更できます。" });

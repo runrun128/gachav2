@@ -9,11 +9,19 @@ export interface IncomingChallenge {
   expiresAt: number;
 }
 
+export interface IncomingTradeInvite {
+  inviteId: string;
+  from: { id: string; displayName: string };
+  expiresAt: number;
+}
+
 interface SocketContextValue {
   socket: Socket | null;
   connected: boolean;
   incomingChallenge: IncomingChallenge | null;
   clearIncomingChallenge: () => void;
+  incomingTradeInvite: IncomingTradeInvite | null;
+  clearIncomingTradeInvite: () => void;
 }
 
 const SocketContext = createContext<SocketContextValue | null>(null);
@@ -24,6 +32,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [incomingChallenge, setIncomingChallenge] = useState<IncomingChallenge | null>(null);
+  const [incomingTradeInvite, setIncomingTradeInvite] = useState<IncomingTradeInvite | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -52,6 +61,19 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       navigate(`/battle/${payload.roomId}`);
     });
 
+    socket.on("trade:inviteReceived", (payload: IncomingTradeInvite) => {
+      setIncomingTradeInvite(payload);
+    });
+
+    socket.on("trade:inviteUpdate", (payload: { inviteId: string }) => {
+      setIncomingTradeInvite((cur) => (cur?.inviteId === payload.inviteId ? null : cur));
+    });
+
+    socket.on("trade:roomReady", (payload: { roomId: string }) => {
+      setIncomingTradeInvite(null);
+      navigate(`/trade/${payload.roomId}`);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -66,6 +88,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         connected,
         incomingChallenge,
         clearIncomingChallenge: () => setIncomingChallenge(null),
+        incomingTradeInvite,
+        clearIncomingTradeInvite: () => setIncomingTradeInvite(null),
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ITEMS } from "@identity-slot/game-core";
+import { ITEMS, itemSellPrice } from "@identity-slot/game-core";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 
@@ -58,4 +58,44 @@ shopRouter.post("/shop/buy", requireAuth, async (req, res) => {
   ]);
 
   res.json({ money: updatedUser.money });
+});
+
+const sellSchema = z.object({
+  itemKey: z.string(),
+  amount: z.coerce.number().int().min(1).max(999).default(1),
+});
+
+shopRouter.post("/shop/sell", requireAuth, async (req, res) => {
+  const parsed = sellSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "入力内容が不正です。" });
+  const { itemKey, amount } = parsed.data;
+
+  const item = ITEMS[itemKey];
+  if (!item) return res.status(400).json({ error: "そのアイテムは売却できません。" });
+
+  const userId = req.user!.id;
+  const totalPrice = itemSellPrice(item) * amount;
+
+  try {
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const inv = await tx.inventoryItem.findUnique({ where: { userId_itemKey: { userId, itemKey } } });
+      if (!inv || inv.quantity < amount) throw new Error("INSUFFICIENT_ITEMS");
+
+      const invUpdate = await tx.inventoryItem.updateMany({
+        where: { userId, itemKey, quantity: inv.quantity },
+        data: { quantity: { decrement: amount } },
+      });
+      if (invUpdate.count === 0) throw new Error("SELL_CONFLICT");
+      return tx.user.update({ where: { id: userId }, data: { money: { increment: totalPrice } } });
+    });
+    res.json({ money: updatedUser.money, price: totalPrice });
+  } catch (err) {
+    if (err instanceof Error && err.message === "INSUFFICIENT_ITEMS") {
+      return res.status(400).json({ error: "そのアイテムを持っていません。" });
+    }
+    if (err instanceof Error && err.message === "SELL_CONFLICT") {
+      return res.status(409).json({ error: "他の操作と競合しました。もう一度お試しください。" });
+    }
+    throw err;
+  }
 });

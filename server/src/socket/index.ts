@@ -4,9 +4,11 @@ import { BattleManager } from "../battle/manager";
 import { env } from "../lib/env";
 import { verifyToken } from "../lib/jwt";
 import { RaidManager } from "../raid/manager";
+import { TradeManager } from "../trade/manager";
 import { registerBattleHandlers } from "./battleHandlers";
 import { addSocket, removeSocket } from "./presence";
 import { registerRaidHandlers } from "./raidHandlers";
+import { registerTradeHandlers } from "./tradeHandlers";
 
 function parseCookies(header?: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -25,6 +27,7 @@ function parseCookies(header?: string): Record<string, string> {
 // 同じマネージャーインスタンスを参照できるようにする(シングルプロセス前提)。
 let battleManagerInstance: BattleManager | null = null;
 let raidManagerInstance: RaidManager | null = null;
+let tradeManagerInstance: TradeManager | null = null;
 
 export function getBattleManager(): BattleManager | null {
   return battleManagerInstance;
@@ -32,6 +35,10 @@ export function getBattleManager(): BattleManager | null {
 
 export function getRaidManager(): RaidManager | null {
   return raidManagerInstance;
+}
+
+export function getTradeManager(): TradeManager | null {
+  return tradeManagerInstance;
 }
 
 export function createSocketServer(httpServer: HTTPServer) {
@@ -50,8 +57,10 @@ export function createSocketServer(httpServer: HTTPServer) {
 
   const battleManager = new BattleManager(io);
   const raidManager = new RaidManager(io);
+  const tradeManager = new TradeManager(io);
   battleManagerInstance = battleManager;
   raidManagerInstance = raidManager;
+  tradeManagerInstance = tradeManager;
 
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId as string;
@@ -60,13 +69,15 @@ export function createSocketServer(httpServer: HTTPServer) {
 
     registerBattleHandlers(io, socket, battleManager, userId);
     registerRaidHandlers(io, socket, raidManager, userId);
+    registerTradeHandlers(io, socket, tradeManager, userId);
 
     socket.on("disconnect", () => {
       removeSocket(userId, socket.id);
       battleManager.handleDisconnect(userId);
       raidManager.handleDisconnect(userId);
+      tradeManager.handleDisconnect(userId);
     });
   });
 
-  return { io, battleManager, raidManager };
+  return { io, battleManager, raidManager, tradeManager };
 }

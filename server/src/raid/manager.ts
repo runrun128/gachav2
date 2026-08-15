@@ -202,7 +202,7 @@ export class RaidManager {
     if (room.phase !== "select") throw new UserFacingError("現在はキャラクターを選択できません。");
     if (room.fighters[userId]) throw new UserFacingError("すでに選択済みです。");
 
-    const character = await prisma.character.findFirst({ where: { id: characterId, userId } });
+    const character = await prisma.character.findFirst({ where: { id: characterId, userId, soldAt: null } });
     if (!character) throw new UserFacingError("キャラクターが見つかりません。");
 
     room.fighters[userId] = buildRaidFighter(character, userId, room.participantNames[userId] ?? "プレイヤー");

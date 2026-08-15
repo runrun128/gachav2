@@ -51,7 +51,7 @@ export class BattleManager {
     const [fromUser, toUser, fromCharCount] = await Promise.all([
       prisma.user.findUnique({ where: { id: fromUserId } }),
       prisma.user.findUnique({ where: { id: toUserId } }),
-      prisma.character.count({ where: { userId: fromUserId } }),
+      prisma.character.count({ where: { userId: fromUserId, soldAt: null } }),
     ]);
     if (!fromUser || !toUser) throw new UserFacingError("ユーザーが見つかりません。");
     if (fromCharCount === 0) throw new UserFacingError("あなたはまだキャラクターがいません。先にガチャを引いてください。");
@@ -234,7 +234,7 @@ export class BattleManager {
     if (room.fighters[userId]) throw new UserFacingError("すでに選択済みです。");
 
     const [character, user] = await Promise.all([
-      prisma.character.findFirst({ where: { id: characterId, userId } }),
+      prisma.character.findFirst({ where: { id: characterId, userId, soldAt: null } }),
       prisma.user.findUnique({ where: { id: userId } }),
     ]);
     if (!character) throw new UserFacingError("キャラクターが見つかりません。");

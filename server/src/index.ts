@@ -11,6 +11,7 @@ import { authRouter } from "./routes/auth";
 import { charactersRouter } from "./routes/characters";
 import { gachaRouter } from "./routes/gacha";
 import { loadCustomGameContent } from "./lib/gameContent";
+import { marketRouter } from "./routes/market";
 import { profileRouter } from "./routes/profile";
 import { pushRouter } from "./routes/push";
 import { shopRouter } from "./routes/shop";
@@ -33,6 +34,7 @@ app.use("/api", charactersRouter);
 app.use("/api", usersRouter);
 app.use("/api", announcementsRouter);
 app.use("/api", pushRouter);
+app.use("/api", marketRouter);
 app.use("/api/admin", adminRouter);
 
 // 本番ビルドでは web/dist を同じプロセスから静的配信し、SPA用にフォールバックする

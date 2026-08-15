@@ -23,6 +23,7 @@ model User {
   receivedAnnouncements Announcement[]       @relation("AnnouncementRecipient")
   passwordResetTokens   PasswordResetToken[]
   pushSubscriptions     PushSubscription[]
+  tradeListings         TradeListing[]
 }
 
 model PushSubscription {
@@ -63,6 +64,9 @@ model Character {
   level         Int      @default(1)
   isExclusive   Boolean  @default(false)
   createdAt     DateTime @default(now())
+  // 売却/トレードで手放すと設定される。null=現在の手持ち。生涯実績(総ガチャ回数・最高レアリティ・
+  // 履歴)はこのフィールドで絞り込まずに算出するため、手放しても過去の記録は消えない。
+  soldAt        DateTime?
 
   grantAnnouncement Announcement?
 
@@ -131,6 +135,22 @@ model CustomFeature {
   spdBonus  Int      @default(0)
   luckBonus Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+// マーケット出品(非同期の売買)。キャラクターは所有権が移るだけ、アイテムは出品と同時に
+// 在庫からエスクロー(即時減算)し、キャンセル時に払い戻す(二重出品による売り越しを防ぐため)。
+model TradeListing {
+  id           String   @id @default(cuid())
+  sellerId     String
+  seller       User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  kind         String // "character" | "item"
+  characterId  String?
+  itemKey      String?
+  itemQuantity Int?
+  price        Int
+  createdAt    DateTime @default(now())
+
+  @@index([sellerId])
 }
 
 model InventoryItem {

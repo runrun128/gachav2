@@ -17,6 +17,8 @@ const NAV_ITEMS = [
   { to: "/shop", label: "🛒 ショップ" },
   { to: "/inventory", label: "🎒 持ち物" },
   { to: "/train", label: "💪 育成" },
+  { to: "/trade", label: "🔄 トレード" },
+  { to: "/market", label: "🏪 マーケット" },
 ];
 
 const PRIMARY_MOBILE_NAV: { to: string; label: string; icon: IconName }[] = [
@@ -49,6 +51,38 @@ function IncomingChallengeBanner() {
       <div className="btn-row">
         <button className="btn btn-primary" disabled={busy} onClick={() => respond(true)}>
           受けて立つ
+        </button>
+        <button className="btn" disabled={busy} onClick={() => respond(false)}>
+          今は無理
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IncomingTradeInviteBanner() {
+  const { incomingTradeInvite, clearIncomingTradeInvite, socket } = useSocket();
+  const [busy, setBusy] = useState(false);
+
+  if (!incomingTradeInvite) return null;
+
+  function respond(accept: boolean) {
+    if (!socket) return;
+    setBusy(true);
+    socket.emit("trade:respondInvite", { inviteId: incomingTradeInvite!.inviteId, accept }, () => {
+      setBusy(false);
+      if (!accept) clearIncomingTradeInvite();
+    });
+  }
+
+  return (
+    <div className="challenge-toast">
+      <p>
+        🔄 <strong>{incomingTradeInvite.from.displayName}</strong> からトレードの申し込みが届きました!
+      </p>
+      <div className="btn-row">
+        <button className="btn btn-primary" disabled={busy} onClick={() => respond(true)}>
+          応じる
         </button>
         <button className="btn" disabled={busy} onClick={() => respond(false)}>
           今は無理
@@ -134,6 +168,7 @@ export function Layout() {
         <Outlet />
       </main>
       <IncomingChallengeBanner />
+      <IncomingTradeInviteBanner />
 
       <nav className={"mobile-tabbar" + (moreOpen ? " sheet-open" : "")}>
         {PRIMARY_MOBILE_NAV.map((item) => (
