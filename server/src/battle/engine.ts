@@ -10,7 +10,6 @@ import {
   GAMBLE_SUCCESS_CHANCE,
   HEAL_SPECIAL_PERCENT_PVP,
   ITEMS,
-  LEVEL_STAT_BONUS_PER_LEVEL,
   RARITY_BASE_STATS,
   Rarity,
   SPECIAL_ATTACK_MULTIPLIER,
@@ -19,6 +18,8 @@ import {
   SPECIAL_TYPES,
   SpecialType,
   defaultSpecialTypeFor,
+  levelCooldownReduction,
+  levelStatMultiplier,
 } from "@identity-slot/game-core";
 import { BattleFighter, BattleRoom, PendingAction, RoundStep } from "./types";
 
@@ -63,7 +64,7 @@ export function buildFighter(character: CharacterLike, userId: string, displayNa
   const rarity = character.rarity as Rarity;
   const base = RARITY_BASE_STATS[rarity];
   const bonus = FEATURE_STAT_BONUS[character.feature] ?? {};
-  const levelMult = 1 + (character.level - 1) * LEVEL_STAT_BONUS_PER_LEVEL;
+  const levelMult = levelStatMultiplier(character.level);
   const maxHp = Math.round((base.hp + (bonus.hp ?? 0)) * levelMult);
   const hasSpecial = !!character.secretFeature;
   let specialType = character.specialType as SpecialType | null;
@@ -137,7 +138,7 @@ export function defenseMultiplier(fighter: BattleFighter, pendingAction: Pending
 }
 
 function resolveGamble(actor: BattleFighter, target: BattleFighter, targetDefenseMult: number): string[] {
-  actor.gambleCooldown = GAMBLE_COOLDOWN_ROUNDS;
+  actor.gambleCooldown = Math.max(1, GAMBLE_COOLDOWN_ROUNDS - levelCooldownReduction(actor.level));
 
   if (targetDefenseMult <= 0) {
     return [`💀 ${actor.displayName} が一か八かの一撃を放つも、相手のお守りに阻まれた!`];
@@ -298,7 +299,7 @@ export function resolveRound(room: BattleRoom): RoundStep[] {
 
       if (action.type === "special") {
         const stype = actor.specialType ?? "attack";
-        actor.specialCooldown = SPECIAL_COOLDOWN_ROUNDS;
+        actor.specialCooldown = Math.max(1, SPECIAL_COOLDOWN_ROUNDS - levelCooldownReduction(actor.level));
         room.log.push(
           `${SPECIAL_TYPES[stype].emoji} ${actor.displayName} のとくぎ「${actor.moveName}」(${SPECIAL_TYPES[stype].label})! ${pick(SPECIAL_QUOTES)}`
         );

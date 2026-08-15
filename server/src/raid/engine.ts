@@ -22,6 +22,7 @@ import {
   SPECIAL_SHIELD_ROUNDS,
   SPECIAL_TYPES,
   WEAKPOINT_MULTIPLIER,
+  levelCooldownReduction,
 } from "@identity-slot/game-core";
 import {
   ATTACK_QUOTES,
@@ -144,7 +145,7 @@ export function applyRoundStartEffects(room: RaidRoom) {
 }
 
 function resolveGambleVsBoss(actor: RaidFighter, boss: RaidBoss): string[] {
-  actor.gambleCooldown = GAMBLE_COOLDOWN_ROUNDS;
+  actor.gambleCooldown = Math.max(1, GAMBLE_COOLDOWN_ROUNDS - levelCooldownReduction(actor.level));
 
   if (Math.floor(Math.random() * 100) + 1 <= GAMBLE_SUCCESS_CHANCE) {
     boss.hp = 0;
@@ -291,7 +292,7 @@ export function resolveParticipantActions(
       let multiplier: number;
       if (action.type === "special") {
         const stype = f.specialType ?? "attack";
-        f.specialCooldown = SPECIAL_COOLDOWN_ROUNDS;
+        f.specialCooldown = Math.max(1, SPECIAL_COOLDOWN_ROUNDS - levelCooldownReduction(f.level));
         room.log.push(
           `${SPECIAL_TYPES[stype].emoji} ${name} のとくぎ「${f.moveName}」(${SPECIAL_TYPES[stype].label})! ${pick(SPECIAL_QUOTES)}`
         );

@@ -5,12 +5,19 @@ import {
   SETSPECIAL_COST,
   SPECIAL_TYPES,
   SPECIAL_TYPE_ORDER,
+  STAT_SCALING_CAP_LEVEL,
   SpecialType,
   characterSellPrice,
   isCharacterSellable,
   isSecretFeatureRarity,
   trainCost,
 } from "@identity-slot/game-core";
+
+function batchTrainCost(level: number, levels: number): number {
+  let total = 0;
+  for (let i = 0; i < levels; i++) total += trainCost(level + i);
+  return total;
+}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { RarityTag } from "../components/RarityTag";
@@ -50,12 +57,12 @@ export function TrainPage() {
     .map((r) => ({ rarity: r, items: (data?.items ?? []).filter((c) => c.rarity === r) }))
     .filter((g) => g.items.length > 0);
 
-  async function train(id: string) {
+  async function train(id: string, levels = 1) {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/characters/${id}/train`);
+      await api.post(`/characters/${id}/train`, { levels });
       await Promise.all([queryClient.invalidateQueries({ queryKey: ["train-characters"] }), refresh()]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "育成に失敗しました。");
@@ -104,7 +111,9 @@ export function TrainPage() {
     <div className="panel">
       <h1>💪 キャラ育成</h1>
       <p style={{ color: "var(--text-dim)" }}>
-        育成でステータス強化(最大Lv{MAX_TRAIN_LEVEL})。SSR以上は{SETSPECIAL_COST}コインでとくぎ属性を変更できます。
+        育成でステータス強化(Lv{STAT_SCALING_CAP_LEVEL}で頭打ち)。それ以降(最大Lv{MAX_TRAIN_LEVEL})は、
+        Lv30・Lv70でとくぎ/一か八かのクールダウンが短縮される特殊な育成に切り替わります。SSR以上は
+        {SETSPECIAL_COST}コインでとくぎ属性を変更できます。
       </p>
       {error && <p className="error-text">{error}</p>}
       {isLoading && <p>読み込み中……</p>}
@@ -129,9 +138,14 @@ export function TrainPage() {
                   {c.age}歳{c.gender}
                 </div>
                 <div className="btn-row" style={{ marginTop: "0.6rem" }}>
-                  <button className="btn" disabled={busy || c.level >= MAX_TRAIN_LEVEL} onClick={() => train(c.id)}>
+                  <button className="btn" disabled={busy || c.level >= MAX_TRAIN_LEVEL} onClick={() => train(c.id, 1)}>
                     {c.level >= MAX_TRAIN_LEVEL ? "最大レベル" : `育成(${trainCost(c.level)}コイン)`}
                   </button>
+                  {c.level < MAX_TRAIN_LEVEL && (
+                    <button className="btn" disabled={busy} onClick={() => train(c.id, 5)}>
+                      +5育成({batchTrainCost(c.level, Math.min(5, MAX_TRAIN_LEVEL - c.level))}コイン)
+                    </button>
+                  )}
                   {isCharacterSellable(c.rarity, c.isExclusive) && (
                     <button
                       className="btn"

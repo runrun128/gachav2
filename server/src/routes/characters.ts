@@ -40,10 +40,15 @@ charactersRouter.get("/characters/mine", requireAuth, async (req, res) => {
   res.json({ items: characters });
 });
 
+const trainSchema = z.object({ levels: z.coerce.number().int().min(1).max(20).optional() });
+
 charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => {
   const userId = req.user!.id;
   const cooldownError = checkTrainCooldown(userId);
   if (cooldownError) return res.status(429).json({ error: cooldownError });
+
+  const parsed = trainSchema.safeParse(req.body ?? {});
+  const requestedLevels = parsed.success ? (parsed.data.levels ?? 1) : 1;
 
   const character = await prisma.character.findFirst({ where: { id: req.params.id, userId, soldAt: null } });
   if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
@@ -51,8 +56,11 @@ charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => 
   if (character.level >= MAX_TRAIN_LEVEL) {
     return res.status(400).json({ error: `すでに最大レベル(Lv${MAX_TRAIN_LEVEL})です。` });
   }
+  const levels = Math.min(requestedLevels, MAX_TRAIN_LEVEL - character.level);
 
-  const cost = trainCost(character.level);
+  let cost = 0;
+  for (let i = 0; i < levels; i++) cost += trainCost(character.level + i);
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return res.status(401).json({ error: "ログインが必要です。" });
   if (user.money < cost) {
@@ -72,7 +80,7 @@ charactersRouter.post("/characters/:id/train", requireAuth, async (req, res) => 
       });
       const characterUpdate = await tx.character.updateMany({
         where: { id: character.id, userId, level: character.level },
-        data: { level: { increment: 1 } },
+        data: { level: { increment: levels } },
       });
       if (userUpdate.count === 0 || characterUpdate.count === 0) {
         throw new Error("TRAIN_CONFLICT");

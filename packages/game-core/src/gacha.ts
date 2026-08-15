@@ -14,6 +14,23 @@ export const LEVEL_STAT_BONUS_PER_LEVEL = 0.05;
 
 export const SETSPECIAL_COST = 300;
 
+// Lv10までは通常通りステータスが伸びるが(最大+45%)、それ以降も同じ倍率で伸ばし続けると
+// 高レベルほど際限なく強くなってしまう(Lv100で約6倍、HPが1000近くになりバランスが崩壊する)。
+// そのためLv10でステータス倍率を頭打ちにし、以降の育成はとくぎ/一か八かの
+// クールダウン短縮という別方向の恩恵に切り替える。
+export const STAT_SCALING_CAP_LEVEL = 10;
+
+export function levelStatMultiplier(level: number): number {
+  const cappedLevel = Math.min(Math.max(level, 1), STAT_SCALING_CAP_LEVEL);
+  return 1 + (cappedLevel - 1) * LEVEL_STAT_BONUS_PER_LEVEL;
+}
+
+export function levelCooldownReduction(level: number): number {
+  if (level >= 70) return 2;
+  if (level >= 30) return 1;
+  return 0;
+}
+
 export type GachaPullType = "single" | "ten" | "sr" | "ssr";
 
 export function costForPullType(type: GachaPullType): number {

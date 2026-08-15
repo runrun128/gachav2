@@ -10,7 +10,6 @@ import { GachaPage } from "./pages/GachaPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RaidLobbyListPage } from "./pages/RaidLobbyListPage";
 import { RaidRoomPage } from "./pages/RaidRoomPage";
@@ -50,7 +49,7 @@ export function App() {
         <Route path="/train" element={<TrainPage />} />
         <Route path="/trade" element={<TradeLobbyPage />} />
         <Route path="/trade/:roomId" element={<TradeRoomPage />} />
-        <Route path="/market" element={<MarketPage />} />
+        <Route path="/market" element={<Navigate to="/shop" replace />} />
         <Route
           path="/admin"
           element={

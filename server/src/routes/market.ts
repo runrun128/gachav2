@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ITEMS, MARKET_MAX_PRICE, Rarity, isCharacterSellable } from "@identity-slot/game-core";
+import { ITEMS, MARKET_MAX_PRICE, Rarity, characterSellPrice, isCharacterSellable } from "@identity-slot/game-core";
 import { CharacterUnavailableError, transferCharacterOwnership } from "../lib/characterTransfer";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
@@ -46,7 +46,6 @@ const createListingSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("character"),
     characterId: z.string().min(1),
-    price: z.coerce.number().int().min(1).max(MARKET_MAX_PRICE),
   }),
   z.object({
     kind: z.literal("item"),
@@ -67,14 +66,18 @@ marketRouter.post("/market/list", async (req, res) => {
       where: { id: data.characterId, userId, soldAt: null },
     });
     if (!character) return res.status(404).json({ error: "キャラクターが見つかりません。" });
-    if (!isCharacterSellable(character.rarity as Rarity, character.isExclusive)) {
+    const rarity = character.rarity as Rarity;
+    if (!isCharacterSellable(rarity, character.isExclusive)) {
       return res.status(400).json({ error: "このキャラクターは出品できません。" });
     }
     const existing = await prisma.tradeListing.findFirst({ where: { characterId: data.characterId } });
     if (existing) return res.status(400).json({ error: "すでに出品中です。" });
 
+    // キャラクターの価格は売り手が自由に決められない。レアリティ・レベルで一意に決まる
+    // 買取価格(キャラクター売却と同じ計算式)に固定し、転売による利益を発生させない。
+    const price = characterSellPrice(rarity, character.level);
     const listing = await prisma.tradeListing.create({
-      data: { sellerId: userId, kind: "character", characterId: data.characterId, price: data.price },
+      data: { sellerId: userId, kind: "character", characterId: data.characterId, price },
     });
     return res.status(201).json({ listing });
   }
