@@ -19,6 +19,8 @@ model User {
   selectedTitle          String?
   battleWins             Int       @default(0)
   raidClears             Int       @default(0)
+  royaleWins             Int       @default(0)
+  tournamentWins         Int       @default(0)
   lastDailyBonusAt       DateTime?
   dailyBonusStreak       Int       @default(0)
 

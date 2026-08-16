@@ -4,4 +4,6 @@ export * from "./items.js";
 export * from "./gacha.js";
 export * from "./battle.js";
 export * from "./raid.js";
+export * from "./royale.js";
+export * from "./tournament.js";
 export * from "./economy.js";

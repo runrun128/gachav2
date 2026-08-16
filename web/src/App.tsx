@@ -19,7 +19,11 @@ import { RaidRoomPage } from "./pages/RaidRoomPage";
 import { RankingPage } from "./pages/RankingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { RoyaleLobbyListPage } from "./pages/RoyaleLobbyListPage";
+import { RoyaleRoomPage } from "./pages/RoyaleRoomPage";
 import { ShopPage } from "./pages/ShopPage";
+import { TournamentLobbyListPage } from "./pages/TournamentLobbyListPage";
+import { TournamentRoomPage } from "./pages/TournamentRoomPage";
 import { TradeLobbyPage } from "./pages/TradeLobbyPage";
 import { TradeRoomPage } from "./pages/TradeRoomPage";
 import { TrainPage } from "./pages/TrainPage";
@@ -53,6 +57,10 @@ export function App() {
         <Route path="/battle/duel/:roomId" element={<BattleRoomPage />} />
         <Route path="/battle/raid" element={<RaidLobbyListPage />} />
         <Route path="/battle/raid/:roomId" element={<RaidRoomPage />} />
+        <Route path="/battle/royale" element={<RoyaleLobbyListPage />} />
+        <Route path="/battle/royale/:roomId" element={<RoyaleRoomPage />} />
+        <Route path="/battle/tournament" element={<TournamentLobbyListPage />} />
+        <Route path="/battle/tournament/:roomId" element={<TournamentRoomPage />} />
         <Route path="/raid" element={<Navigate to="/battle/raid" replace />} />
         <Route path="/raid/:roomId" element={<RaidRoomRedirect />} />
         <Route path="/profile" element={<ProfilePage />} />

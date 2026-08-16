@@ -25,9 +25,9 @@ const MODES: ModeCard[] = [
   { key: "duo", to: "", emoji: "👯", label: "デュオ", desc: "2人1組のチーム戦(近日公開)", color: "#4dd0e1", comingSoon: true },
   { key: "trio", to: "", emoji: "🔺", label: "トリオ", desc: "3人1組のチーム戦(近日公開)", color: "#3498db", comingSoon: true },
   { key: "squad", to: "", emoji: "🛡️", label: "スクワッド", desc: "4人1組のチーム戦(近日公開)", color: "#2ecc71", comingSoon: true },
-  { key: "ffa", to: "", emoji: "🌀", label: "自由戦", desc: "全員が敵の乱戦バトルロイヤル(近日公開)", color: "#e67e22", comingSoon: true },
+  { key: "ffa", to: "/battle/royale", emoji: "🌀", label: "バトルロイヤル", desc: "全員が敵の乱戦、最後の1人を目指せ", color: "#e67e22" },
   { key: "bot", to: "", emoji: "🤖", label: "ボットマッチ", desc: "CPU相手に練習できる対戦(近日公開)", color: "#95a5a6", comingSoon: true },
-  { key: "tournament", to: "", emoji: "🏆", label: "トーナメント戦", desc: "勝ち上がり形式の大会(近日公開)", color: "#f1c40f", comingSoon: true },
+  { key: "tournament", to: "/battle/tournament", emoji: "🏆", label: "トーナメント戦", desc: "4人or8人の勝ち上がり形式の大会", color: "#f1c40f" },
 ];
 
 export function BattleHubPage() {
@@ -35,6 +35,8 @@ export function BattleHubPage() {
   const navigate = useNavigate();
   const [activeDuelId, setActiveDuelId] = useState<string | null>(null);
   const [activeRaidId, setActiveRaidId] = useState<string | null>(null);
+  const [activeRoyaleId, setActiveRoyaleId] = useState<string | null>(null);
+  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -43,6 +45,12 @@ export function BattleHubPage() {
     });
     socket.emit("raid:myRoom", {}, (res: AckResponse<{ roomId: string | null }>) => {
       if (res.ok && res.data) setActiveRaidId(res.data.roomId);
+    });
+    socket.emit("royale:myRoom", {}, (res: AckResponse<{ roomId: string | null }>) => {
+      if (res.ok && res.data) setActiveRoyaleId(res.data.roomId);
+    });
+    socket.emit("tournament:myRoom", {}, (res: AckResponse<{ roomId: string | null }>) => {
+      if (res.ok && res.data) setActiveTournamentId(res.data.roomId);
     });
   }, [socket, connected]);
 
@@ -61,6 +69,22 @@ export function BattleHubPage() {
           <p>🐉 進行中のレイドがあります。</p>
           <button className="btn btn-primary" onClick={() => navigate(`/battle/raid/${activeRaidId}`)}>
             レイドに戻る
+          </button>
+        </div>
+      )}
+      {activeRoyaleId && (
+        <div className="panel">
+          <p>🌀 進行中のバトルロイヤルがあります。</p>
+          <button className="btn btn-primary" onClick={() => navigate(`/battle/royale/${activeRoyaleId}`)}>
+            バトルロイヤルに戻る
+          </button>
+        </div>
+      )}
+      {activeTournamentId && (
+        <div className="panel">
+          <p>🏆 進行中のトーナメントがあります。</p>
+          <button className="btn btn-primary" onClick={() => navigate(`/battle/tournament/${activeTournamentId}`)}>
+            トーナメントに戻る
           </button>
         </div>
       )}
