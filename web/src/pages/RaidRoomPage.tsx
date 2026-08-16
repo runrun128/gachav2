@@ -42,6 +42,7 @@ interface RaidFighterDTO {
   burnRounds: number;
   poisonRounds: number;
   silencedRounds: number;
+  infectedRounds: number;
   atkDebuffRounds: number;
 }
 
@@ -532,6 +533,7 @@ function RaidFighterPanel({
     if (f.burnRounds > 0) statusIcons.push(`🔥火傷(${f.burnRounds})`);
     if (f.poisonRounds > 0) statusIcons.push(`🕷️毒(${f.poisonRounds})`);
     if (f.silencedRounds > 0) statusIcons.push(`🔇封印(${f.silencedRounds})`);
+    if (f.infectedRounds > 0) statusIcons.push(`🍌感染(${f.infectedRounds})`);
     if (f.atkDebuffRounds > 0) statusIcons.push(`📉攻撃低下(${f.atkDebuffRounds})`);
   }
 

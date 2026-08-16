@@ -30,6 +30,7 @@ export interface RaidFighter {
   poisonRounds: number;
   burnRounds: number;
   silencedRounds: number;
+  infectedRounds: number;
   frozen: boolean;
   retired: boolean;
 }

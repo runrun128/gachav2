@@ -146,3 +146,35 @@ announcementsRouter.post("/admin/announcements", requireAuth, requireAdmin, asyn
 
   res.status(201).json({ id: announcement.id, recipientCount: recipients.length });
 });
+
+// 運営パネル用: 個人宛も含めて全件を新しい順に一覧表示する(削除対象を探すため)
+announcementsRouter.get("/admin/announcements", requireAuth, requireAdmin, async (_req, res) => {
+  const items = await prisma.announcement.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: { author: { select: { displayName: true } }, recipient: { select: { displayName: true } } },
+  });
+
+  res.json({
+    items: items.map((a) => ({
+      id: a.id,
+      title: a.title,
+      body: a.body,
+      authorDisplayName: a.author.displayName,
+      recipientDisplayName: a.recipient?.displayName ?? null,
+      coinAmount: a.coinAmount,
+      itemKey: a.itemKey,
+      itemAmount: a.itemAmount,
+      createdAt: a.createdAt,
+    })),
+  });
+});
+
+// 誤って送信した告知(表示崩れ等)を取り消す。既に配布済みのコイン/アイテムは回収しない。
+announcementsRouter.delete("/admin/announcements/:id", requireAuth, requireAdmin, async (req, res) => {
+  const existing = await prisma.announcement.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "そのお知らせが見つかりません。" });
+
+  await prisma.announcement.delete({ where: { id: req.params.id } });
+  res.status(204).end();
+});

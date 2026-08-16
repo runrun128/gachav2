@@ -7,6 +7,8 @@ export const RAID_MVP_BONUS = 200;
 export const BURN_ROUNDS = 2;
 export const POISON_ROUNDS = 2;
 export const SILENCE_ROUNDS = 2;
+export const INFECTION_ROUNDS = 3;
+export const INFECTION_FRIENDLY_FIRE_CHANCE = 50; // %
 
 export const WEAKPOINT_EVERY = 5;
 export const WEAKPOINT_MULTIPLIER = 1.5;
@@ -20,7 +22,7 @@ export const RAID_CHARACTER_SELECT_TIMEOUT_MS = 60_000;
 // ラウンド結果(参加者の行動+ボスの行動)を見せてから次のラウンドを開始するまでの間
 export const RAID_ROUND_INTERMISSION_MS = 3_000;
 
-export type BossKey = "gehenna" | "lilith" | "varga" | "voltex" | "arachne" | "shade";
+export type BossKey = "gehenna" | "lilith" | "varga" | "voltex" | "arachne" | "shade" | "banana";
 
 export interface BossDef {
   key: BossKey;
@@ -61,6 +63,10 @@ export interface BossDef {
   curseMoveName?: string;
   curseMoveQuote?: string;
   curseMoveChance?: number;
+
+  virusMoveName?: string;
+  virusMoveQuote?: string;
+  virusMoveChance?: number;
 }
 
 export const BOSSES: Record<BossKey, BossDef> = {
@@ -180,6 +186,29 @@ export const BOSSES: Record<BossKey, BossDef> = {
     curseMoveQuote: "「弱くなれ…」",
     curseMoveChance: 22,
   },
+  banana: {
+    key: "banana",
+    name: "バナナの王様",
+    emoji: "🍌",
+    color: "#F5C518",
+    hp: 560,
+    atk: 27,
+    def: 19,
+    spd: 15,
+    desc:
+      "3ラウンドごとに伝説の専用技「禁断の全部乗せバナナ核爆発」を解禁し、参加者全員に大ダメージ+毒を撒き散らした上、" +
+      "ランダムな相手を火傷・凍結・沈黙状態にし、さらに全員の攻撃力まで低下させる。ダメージの一部は王自身の回復に変換される。" +
+      "また「バナナウイルス散布」で相手をバナナ教に感染させ、幻聴に惑わされて味方を攻撃してしまうことがある。" +
+      "通常攻撃でも高確率で毒を撒き散らす、シリーズ屈指の凶悪なボス。",
+    specialName: "禁断の全部乗せバナナ核爆発",
+    attackQuotes: ["「皮を、剥いてやろうか?」", "「熟れすぎた者から、狩る。」", "「甘い罠にハマったな。」", "「これが王の実力だ。」"],
+    specialQuote: "「これが、腐り果てた王の全て…全部乗せで受け取るがいい!!」",
+    poisonChance: 45,
+    drainRatio: 0.3,
+    virusMoveName: "バナナウイルス散布",
+    virusMoveQuote: "「さあ、我が教えに目覚めるがいい…」",
+    virusMoveChance: 30,
+  },
 };
 
-export const BOSS_ORDER: BossKey[] = ["gehenna", "lilith", "varga", "voltex", "arachne", "shade"];
+export const BOSS_ORDER: BossKey[] = ["gehenna", "lilith", "varga", "voltex", "arachne", "shade", "banana"];

@@ -14,6 +14,8 @@ import {
   GAMBLE_RECOIL_PERCENT,
   GAMBLE_SUCCESS_CHANCE,
   HEAL_SPECIAL_PERCENT_RAID,
+  INFECTION_FRIENDLY_FIRE_CHANCE,
+  INFECTION_ROUNDS,
   ITEMS,
   POISON_ROUNDS,
   SILENCE_ROUNDS,
@@ -82,7 +84,7 @@ export function buildBossFighter(bossKey: BossKey, participantCount: number): Ra
 
 export function buildRaidFighter(character: CharacterLike, userId: string, displayName: string): RaidFighter {
   const base = buildFighter(character, userId, displayName);
-  return { ...base, burnRounds: 0, silencedRounds: 0, frozen: false };
+  return { ...base, burnRounds: 0, silencedRounds: 0, infectedRounds: 0, frozen: false };
 }
 
 function pickOne<T>(arr: T[]): T {
@@ -131,6 +133,7 @@ export function applyRoundStartEffects(room: RaidRoom) {
     }
     if (f.atkDebuffRounds > 0) f.atkDebuffRounds -= 1;
     if (f.silencedRounds > 0) f.silencedRounds -= 1;
+    if (f.infectedRounds > 0) f.infectedRounds -= 1;
   }
 
   const boss = room.boss!;
@@ -326,6 +329,24 @@ export function resolveParticipantActions(
         room.log.push(`⚔️ ${name} のこうげき! ${pick(ATTACK_QUOTES)}`);
       }
 
+      if (room.bossKey === "banana" && f.infectedRounds > 0) {
+        const otherAllies = room.participantIds.filter(
+          (otherId) => otherId !== pid && (room.fighters[otherId]?.hp ?? 0) > 0
+        );
+        if (otherAllies.length && Math.floor(Math.random() * 100) + 1 <= INFECTION_FRIENDLY_FIRE_CHANCE) {
+          const allyId = pickOne(otherAllies);
+          const ally = room.fighters[allyId]!;
+          const allyDefMult = defenseMultiplier(ally, room.pending[allyId]);
+          const { damage, crit } = computeDamage(atkValue, ally.def, multiplier, allyDefMult, f.luck);
+          ally.hp -= damage;
+          room.log.push(`🍌 ${name} の頭の中でバナナ教の声が響く……「同胞を狩れ、それが我が教えだ…」`);
+          room.log.push(
+            `　→ ${name} は幻聴に操られ、味方の ${ally.displayName} に襲いかかった!${crit ? "会心の一撃! " : ""}${damage} ダメージ!`
+          );
+          continue;
+        }
+      }
+
       let weakNote = "";
       if (weakPointActive) {
         multiplier *= WEAKPOINT_MULTIPLIER;
@@ -495,6 +516,62 @@ function bossTurnInner(room: RaidRoom) {
     return;
   }
 
+  if (room.bossKey === "banana" && room.roundNo % 3 === 0) {
+    room.log.push(`🍌🍌🍌 ${boss.name} が禁断の「${info.specialName}」を解禁した…!! ${info.specialQuote}`);
+    let totalDamage = 0;
+    for (const pid of aliveIds) {
+      const target = room.fighters[pid]!;
+      const defMult = defenseMultiplier(target, room.pending[pid]);
+      const { damage, crit } = computeDamage(bossAtkValue, target.def, 1.3, defMult, 0);
+      target.hp -= damage;
+      totalDamage += damage;
+      target.poisonRounds = POISON_ROUNDS;
+      room.log.push(`　→ ${target.displayName} に ${crit ? "会心! " : ""}${damage} ダメージ!さらに毒状態になった。`);
+    }
+
+    const burnId = pickOne(aliveIds);
+    room.fighters[burnId]!.burnRounds = BURN_ROUNDS;
+    room.log.push(`🔥 ${room.fighters[burnId]!.displayName} は皮の炎で全身を焼かれた!${BURN_ROUNDS}ラウンドの間、火傷状態になった。`);
+
+    const frozenId = pickOne(aliveIds);
+    room.fighters[frozenId]!.frozen = true;
+    room.log.push(`🧊 ${room.fighters[frozenId]!.displayName} は冷凍バナナと化した!次のラウンドは動けない。`);
+
+    const silencedId = pickOne(aliveIds);
+    room.fighters[silencedId]!.silencedRounds = SILENCE_ROUNDS;
+    room.log.push(
+      `🤐 ${room.fighters[silencedId]!.displayName} は甘い匂いに酔いしれ、力が封じられた!${SILENCE_ROUNDS}ラウンドの間、とくぎ・一か八かが使えない。`
+    );
+
+    for (const pid of aliveIds) room.fighters[pid]!.atkDebuffRounds = ATK_DEBUFF_ROUNDS;
+    room.log.push(`　→ 参加者全員の攻撃力が${ATK_DEBUFF_ROUNDS}ラウンドの間低下した!`);
+
+    const infectedId = pickOne(aliveIds);
+    room.fighters[infectedId]!.infectedRounds = INFECTION_ROUNDS;
+    room.log.push(
+      `🍌 ${room.fighters[infectedId]!.displayName} の頭の中にバナナ教の福音が流れ込む…!${INFECTION_ROUNDS}ラウンドの間、幻聴に惑わされることがある。`
+    );
+
+    const drain = Math.round(totalDamage * (info.drainRatio ?? 0.3));
+    boss.hp = Math.min(boss.maxHp, boss.hp + drain);
+    room.log.push(`　→ ${boss.name} は撒き散らした腐敗のうち ${drain} を吸収し、自らのHPに変えた。`);
+    return;
+  }
+
+  if (room.bossKey === "banana" && Math.floor(Math.random() * 100) + 1 <= (info.virusMoveChance ?? 0)) {
+    room.log.push(`🍌 ${boss.name} が「${info.virusMoveName}」を放つ…… ${info.virusMoveQuote}`);
+    const targetId = pickOne(aliveIds);
+    const target = room.fighters[targetId]!;
+    const defMult = defenseMultiplier(target, room.pending[targetId]);
+    const { damage, crit } = computeDamage(bossAtkValue, target.def, 0.8, defMult, 0);
+    target.hp -= damage;
+    target.infectedRounds = INFECTION_ROUNDS;
+    room.log.push(
+      `　→ ${crit ? "会心! " : ""}${target.displayName} に ${damage} ダメージ!バナナ教に感染し、${INFECTION_ROUNDS}ラウンドの間、幻聴に惑わされることがある。`
+    );
+    return;
+  }
+
   const quote = pick(info.attackQuotes);
   room.log.push(`${boss.name} ${quote}`);
   const targetId = pickOne(aliveIds);
@@ -514,9 +591,13 @@ function bossTurnInner(room: RaidRoom) {
     }
   }
 
-  if (room.bossKey === "arachne" && Math.floor(Math.random() * 100) + 1 <= (info.poisonChance ?? 0)) {
+  if (
+    (room.bossKey === "arachne" || room.bossKey === "banana") &&
+    Math.floor(Math.random() * 100) + 1 <= (info.poisonChance ?? 0)
+  ) {
     target.poisonRounds = POISON_ROUNDS;
-    room.log.push(`🕷️ ${target.displayName} は猛毒に侵された!${POISON_ROUNDS}ラウンドの間、毒状態になる。`);
+    const poisonEmoji = room.bossKey === "banana" ? "🍌" : "🕷️";
+    room.log.push(`${poisonEmoji} ${target.displayName} は猛毒に侵された!${POISON_ROUNDS}ラウンドの間、毒状態になる。`);
   }
 
   if (room.bossKey === "shade" && Math.floor(Math.random() * 100) + 1 <= (info.curseMoveChance ?? 0)) {

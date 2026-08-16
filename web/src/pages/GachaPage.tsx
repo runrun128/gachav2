@@ -45,6 +45,7 @@ const REVEAL_LABELS = ["🌍 出身国", "🎂 年齢", "⚧️ 性別", "🎭 �
 const SHUFFLE_MS = 650;
 const TEN_SHUFFLE_MS = 1000;
 const FLASH_MS = 400;
+const MEGA_FLASH_MS = 650;
 const CONFIRM_MS_PLAIN = 700;
 const CONFIRM_MS_FLASHY = 1300;
 const CONFIRM_MS_MAJESTIC = 1700;
@@ -87,6 +88,11 @@ function isFlashyRarity(r: Rarity): boolean {
   return r === "SSR" || r === "UR" || r === "MUR" || r === "KMR" || r === "LTD";
 }
 
+// UR以上は画面反転+振動の演出("脳汁"演出)を追加で発火する
+function isMegaTier(tier: ConfirmTier): boolean {
+  return tier === "ur" || tier === "mur" || tier === "kmr" || tier === "ltd";
+}
+
 function rarityStyle(r: Rarity): CSSProperties {
   return { "--rc": RARITIES[r].color } as CSSProperties;
 }
@@ -106,7 +112,12 @@ export function GachaPage() {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [flash, setFlash] = useState(false);
+  const [megaFlash, setMegaFlash] = useState(false);
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove("mega-shake");
+  }, []);
 
   const { data: limitedData } = useQuery({
     queryKey: ["limited-gacha"],
@@ -138,7 +149,16 @@ export function GachaPage() {
     setConfirmedRarity(rarity);
     setPhase("confirming");
     const tier = confirmTierFor(rarity);
-    if (tier !== "plain") {
+    if (isMegaTier(tier)) {
+      window.setTimeout(() => {
+        setMegaFlash(true);
+        document.documentElement.classList.add("mega-shake");
+        window.setTimeout(() => {
+          setMegaFlash(false);
+          document.documentElement.classList.remove("mega-shake");
+        }, MEGA_FLASH_MS);
+      }, 150);
+    } else if (tier !== "plain") {
       window.setTimeout(() => {
         setFlash(true);
         window.setTimeout(() => setFlash(false), FLASH_MS);
@@ -244,6 +264,7 @@ export function GachaPage() {
   return (
     <div>
       {flash && <div className="gacha-flash" />}
+      {megaFlash && <div className="gacha-invert-flash" />}
 
       {showSelection &&
         limitedBanners.map((banner) => (

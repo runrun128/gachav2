@@ -62,6 +62,18 @@ interface ItemGachaEntryRow {
   item: ItemDef | null;
 }
 
+interface AdminAnnouncementRow {
+  id: string;
+  title: string;
+  body: string;
+  authorDisplayName: string;
+  recipientDisplayName: string | null;
+  coinAmount: number | null;
+  itemKey: string | null;
+  itemAmount: number | null;
+  createdAt: string;
+}
+
 interface LimitedBonusRow {
   id: string;
   name: string;
@@ -133,6 +145,12 @@ export function AdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const { data: adminAnnouncementsData } = useQuery({
+    queryKey: ["admin-announcements"],
+    queryFn: () => api.get<{ items: AdminAnnouncementRow[] }>("/admin/announcements"),
+  });
+  const [deletingAnnouncementId, setDeletingAnnouncementId] = useState<string | null>(null);
 
   const { data: itemsData } = useQuery({
     queryKey: ["admin-items"],
@@ -654,10 +672,28 @@ export function AdminPage() {
       setAnnounceCharGender("");
       setAnnounceCharFeature("");
       setAnnounceCharSecretFeature("");
+      await queryClient.invalidateQueries({ queryKey: ["admin-announcements"] });
     } catch (err) {
       setErrorMessage(err instanceof ApiError ? err.message : "お知らせの送信に失敗しました。");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function deleteAnnouncement(id: string) {
+    setDeletingAnnouncementId(id);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/announcements/${id}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-announcements"] }),
+        queryClient.invalidateQueries({ queryKey: ["announcements"] }),
+        queryClient.invalidateQueries({ queryKey: ["announcements-unread-count"] }),
+      ]);
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setDeletingAnnouncementId(null);
     }
   }
 
@@ -1141,6 +1177,43 @@ export function AdminPage() {
           送信する
         </button>
       </form>
+
+      <div className="panel">
+        <h3>🗑 お知らせ削除</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          誤って送信したお知らせを削除します。すでに配布済みのコイン・アイテムは回収されません。
+        </p>
+        <div className="result-grid">
+          {adminAnnouncementsData?.items.map((a) => (
+            <div className="card" key={a.id}>
+              <div style={{ fontWeight: 700 }}>{a.title}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem", overflowWrap: "anywhere" }}>{a.body}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.3rem 0" }}>
+                {a.recipientDisplayName ? `個人宛: ${a.recipientDisplayName}` : "全員宛"} / {new Date(a.createdAt).toLocaleString()}
+              </div>
+              {(a.coinAmount || a.itemKey) && (
+                <div style={{ color: "var(--gold)", fontSize: "0.85rem" }}>
+                  {a.coinAmount ? `💰 ${a.coinAmount}` : null}
+                  {a.coinAmount && a.itemKey ? " / " : null}
+                  {a.itemKey ? `🎒 ${a.itemKey} ×${a.itemAmount}` : null}
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)", marginTop: "0.5rem" }}
+                disabled={deletingAnnouncementId === a.id}
+                onClick={() => deleteAnnouncement(a.id)}
+              >
+                削除する
+              </button>
+            </div>
+          ))}
+          {adminAnnouncementsData?.items.length === 0 && (
+            <p style={{ color: "var(--text-dim)" }}>お知らせはまだありません。</p>
+          )}
+        </div>
+      </div>
 
       <form className="panel" onSubmit={broadcastItem}>
         <h3>📢 全員配布(お知らせなし)</h3>

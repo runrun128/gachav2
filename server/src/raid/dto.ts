@@ -90,6 +90,7 @@ export function roomToStateDTO(room: RaidRoom) {
               burnRounds: f.burnRounds,
               poisonRounds: f.poisonRounds,
               silencedRounds: f.silencedRounds,
+              infectedRounds: f.infectedRounds,
               atkDebuffRounds: f.atkDebuffRounds,
             }
           : null,

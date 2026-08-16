@@ -461,6 +461,69 @@ button.card:focus-visible {
   }
 }
 
+/* ===== UR以上: 画面反転演出(脳汁ドバドバ) ===== */
+
+.gacha-invert-flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 1000;
+  animation: gacha-invert-strobe 0.65s steps(1, end) forwards;
+}
+
+@keyframes gacha-invert-strobe {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  6%,
+  18% {
+    opacity: 1;
+  }
+  12%,
+  24% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0;
+  }
+  55% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0;
+  }
+}
+
+html.mega-shake {
+  animation: mega-shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes mega-shake {
+  10%,
+  90% {
+    transform: translate3d(-2px, 0, 0);
+  }
+  20%,
+  80% {
+    transform: translate3d(4px, -2px, 0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-8px, 2px, 0);
+  }
+  40%,
+  60% {
+    transform: translate3d(8px, -2px, 0);
+  }
+}
+
 .gacha-confirm {
   position: relative;
   overflow: hidden;
