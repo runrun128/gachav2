@@ -24,6 +24,8 @@ model User {
   passwordResetTokens   PasswordResetToken[]
   pushSubscriptions     PushSubscription[]
   tradeListings         TradeListing[]
+  achievements           UserAchievement[]
+  selectedTitle          String?
 }
 
 model PushSubscription {
