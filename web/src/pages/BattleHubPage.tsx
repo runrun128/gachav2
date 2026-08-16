@@ -23,6 +23,11 @@ const MODES: ModeCard[] = [
   { key: "duel", to: "/battle/duel", emoji: "⚔️", label: "タイマン", desc: "1対1のリアルタイム対戦", color: "#e74c3c" },
   { key: "raid", to: "/battle/raid", emoji: "🐉", label: "レイド", desc: "最大4人でボスに挑む協力戦", color: "#9b59b6" },
   { key: "duo", to: "", emoji: "👯", label: "デュオ", desc: "2人1組のチーム戦(近日公開)", color: "#4dd0e1", comingSoon: true },
+  { key: "trio", to: "", emoji: "🔺", label: "トリオ", desc: "3人1組のチーム戦(近日公開)", color: "#3498db", comingSoon: true },
+  { key: "squad", to: "", emoji: "🛡️", label: "スクワッド", desc: "4人1組のチーム戦(近日公開)", color: "#2ecc71", comingSoon: true },
+  { key: "ffa", to: "", emoji: "🌀", label: "自由戦", desc: "全員が敵の乱戦バトルロイヤル(近日公開)", color: "#e67e22", comingSoon: true },
+  { key: "bot", to: "", emoji: "🤖", label: "ボットマッチ", desc: "CPU相手に練習できる対戦(近日公開)", color: "#95a5a6", comingSoon: true },
+  { key: "tournament", to: "", emoji: "🏆", label: "トーナメント戦", desc: "勝ち上がり形式の大会(近日公開)", color: "#f1c40f", comingSoon: true },
 ];
 
 export function BattleHubPage() {
