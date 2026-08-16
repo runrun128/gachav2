@@ -12,6 +12,7 @@ import {
 } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
 import { CSSProperties, useEffect, useRef, useState } from "react";
+import { DailyBonusPanel } from "../components/DailyBonusPanel";
 import { RarityTag } from "../components/RarityTag";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -244,6 +245,8 @@ export function GachaPage() {
   return (
     <div>
       {flash && <div className="gacha-flash" />}
+
+      {showSelection && <DailyBonusPanel />}
 
       {showSelection &&
         limitedBanners.map((banner) => (

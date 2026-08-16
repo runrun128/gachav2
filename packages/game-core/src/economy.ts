@@ -46,3 +46,44 @@ export const TRADE_INVITE_TIMEOUT_MS = 30_000;
 export const TRADE_MAX_OFFER_CHARACTERS = 10;
 export const TRADE_MAX_COINS = 1_000_000_000;
 export const MARKET_MAX_PRICE = 1_000_000_000;
+
+// デイリーログインボーナス。7日サイクルで、最終日(7日目)にまとまったボーナスが付く。
+export const DAILY_BONUS_CYCLE_DAYS = 7;
+export const DAILY_BONUS_REWARDS: number[] = [100, 150, 200, 250, 300, 400, 800];
+
+export function dailyBonusRewardForStreak(streak: number): number {
+  const idx = Math.min(Math.max(streak, 1), DAILY_BONUS_CYCLE_DAYS) - 1;
+  return DAILY_BONUS_REWARDS[idx];
+}
+
+function toUtcDateOnly(d: Date): number {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+export interface DailyBonusStatus {
+  canClaim: boolean;
+  /** 今クレームした場合に到達するstreak(まだ受け取っていない場合の見込み値) */
+  nextStreak: number;
+}
+
+/**
+ * lastClaimedAt(前回受け取り日時)とcurrentStreak(現在の連続日数)から、
+ * 今日クレームできるか・できるなら次のstreakがいくつになるかを計算する。
+ * 日付比較はUTC暦日単位(サーバーのタイムゾーンに依存しない)。
+ */
+export function computeDailyBonusStatus(
+  lastClaimedAt: Date | null,
+  currentStreak: number,
+  now: Date = new Date()
+): DailyBonusStatus {
+  if (!lastClaimedAt) return { canClaim: true, nextStreak: 1 };
+
+  const dayDiff = Math.round((toUtcDateOnly(now) - toUtcDateOnly(lastClaimedAt)) / (24 * 60 * 60 * 1000));
+
+  if (dayDiff <= 0) return { canClaim: false, nextStreak: currentStreak };
+  if (dayDiff === 1) {
+    const nextStreak = currentStreak >= DAILY_BONUS_CYCLE_DAYS ? 1 : currentStreak + 1;
+    return { canClaim: true, nextStreak };
+  }
+  return { canClaim: true, nextStreak: 1 };
+}
