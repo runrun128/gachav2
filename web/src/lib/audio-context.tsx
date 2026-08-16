@@ -33,11 +33,52 @@ function readStoredVolume(): number {
   }
 }
 
+type WebAudioContextCtor = typeof window.AudioContext;
+
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [muted, setMutedState] = useState(readStoredMuted);
   const [volume, setVolumeState] = useState(readStoredVolume);
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
   const bgmKeyRef = useRef<BgmKey | null>(null);
+
+  // iOS SafariはHTMLMediaElement.volume/mutedへの代入を無視する(本体の物理ボタンでしか
+  // 音量調整できない仕様)。Web Audio APIのGainNodeを経由させると、この制限を回避して
+  // 実際に音量・ミュートを効かせられるため、すべての再生をGainNode経由にする。
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+
+  const getGraph = useCallback((): { ctx: AudioContext; gain: GainNode } | null => {
+    const Ctor: WebAudioContextCtor | undefined =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: WebAudioContextCtor }).webkitAudioContext;
+    if (!Ctor) return null;
+    if (!audioCtxRef.current) {
+      const ctx = new Ctor();
+      const gain = ctx.createGain();
+      gain.gain.value = muted ? 0 : volume;
+      gain.connect(ctx.destination);
+      audioCtxRef.current = ctx;
+      masterGainRef.current = gain;
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return { ctx: audioCtxRef.current, gain: masterGainRef.current! };
+  }, [muted, volume]);
+
+  /** audio要素をGainNode経由の出力に繋ぎ変える。接続後は要素自体のvolume/mutedは効かなくなる。 */
+  const routeThroughGraph = useCallback(
+    (audio: HTMLAudioElement) => {
+      const graph = getGraph();
+      if (!graph) return; // Web Audio API非対応の環境ではブラウザ標準の再生のみ行う
+      try {
+        const source = graph.ctx.createMediaElementSource(audio);
+        source.connect(graph.gain);
+      } catch {
+        // 同じ要素に対して二重に呼ばれた場合など。実害はないので無視する。
+      }
+    },
+    [getGraph]
+  );
 
   const setMuted = useCallback((value: boolean) => {
     setMutedState(value);
@@ -62,11 +103,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     (key: SfxKey) => {
       if (muted) return;
       const audio = new Audio(SFX_FILES[key]);
-      audio.volume = volume;
+      routeThroughGraph(audio);
       // 音源が未配置(404)でもコンソールを汚さず静かに諦める
       audio.play().catch(() => {});
     },
-    [muted, volume]
+    [muted, routeThroughGraph]
   );
 
   const playBgm = useCallback(
@@ -82,23 +123,43 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
       const audio = new Audio(BGM_FILES[key]);
       audio.loop = true;
-      audio.volume = muted ? 0 : volume;
+      routeThroughGraph(audio);
       bgmAudioRef.current = audio;
-      // 自動再生ブロック(ユーザー操作前)は無視して、次の操作後の再生に任せる
-      audio.play().catch(() => {});
+      // 自動再生ブロック(ユーザー操作前)やタブが非表示中の再生ブロックは無視して、
+      // 次の操作/表示復帰後の再生に任せる
+      if (!document.hidden) audio.play().catch(() => {});
     },
-    [muted, volume]
+    [routeThroughGraph]
   );
 
+  // ミュート/音量の変更はGainNodeの値を直接書き換えるだけでよい(iOSでも確実に反映される)
   useEffect(() => {
-    if (bgmAudioRef.current) {
-      bgmAudioRef.current.volume = muted ? 0 : volume;
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = muted ? 0 : volume;
     }
   }, [muted, volume]);
+
+  // アプリがバックグラウンドに回った(タブ切り替え/ホーム画面に戻る/画面ロック)間はBGMを一時停止し、
+  // 復帰したら再開する。スマホでバックグラウンド再生され続けて電池を消費したり、
+  // ロック画面にメディア再生通知が出続けたりするのを防ぐ。
+  useEffect(() => {
+    function handleVisibilityChange() {
+      const audio = bgmAudioRef.current;
+      if (!audio) return;
+      if (document.hidden) {
+        audio.pause();
+      } else if (!muted) {
+        audio.play().catch(() => {});
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [muted]);
 
   useEffect(() => {
     return () => {
       bgmAudioRef.current?.pause();
+      audioCtxRef.current?.close().catch(() => {});
     };
   }, []);
 
