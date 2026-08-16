@@ -1,13 +1,16 @@
 import { ItemDef, Rarity, SpecialType } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BattleLog } from "../components/BattleLog";
 import { CharacterPicker } from "../components/CharacterPicker";
 import { FighterVitals } from "../components/FighterVitals";
 import { RarityTag } from "../components/RarityTag";
+import { useBgm } from "../hooks/useBgm";
 import { useRoundReplay } from "../hooks/useRoundReplay";
+import { useStepSfx } from "../hooks/useStepSfx";
 import { api } from "../lib/api";
+import { useAudio } from "../lib/audio-context";
 import { useAuth } from "../lib/auth-context";
 import { useSocket } from "../lib/socket-context";
 
@@ -169,6 +172,21 @@ export function RoyaleRoomPage() {
   }, [socket, roomId]);
 
   const { visibleLogCount, previousLogCount, activeStep } = useRoundReplay(state?.log.length ?? 0, state?.roundSteps);
+
+  const { playSfx } = useAudio();
+  useBgm("battle");
+  useStepSfx(state?.log, previousLogCount, visibleLogCount);
+
+  const finishedSfxPlayedRef = useRef(false);
+  useEffect(() => {
+    if (state?.phase !== "finished") {
+      finishedSfxPlayedRef.current = false;
+      return;
+    }
+    if (finishedSfxPlayedRef.current) return;
+    finishedSfxPlayedRef.current = true;
+    playSfx(state.winnerUserId === user?.id ? "victory" : "defeat");
+  }, [state?.phase, state?.winnerUserId, user?.id, playSfx]);
 
   if (error) {
     return (

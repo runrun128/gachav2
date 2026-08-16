@@ -1,9 +1,11 @@
 import { Rarity, SpecialType } from "@identity-slot/game-core";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CharacterPicker } from "../components/CharacterPicker";
+import { useBgm } from "../hooks/useBgm";
 import { api } from "../lib/api";
+import { useAudio } from "../lib/audio-context";
 import { useAuth } from "../lib/auth-context";
 import { useSocket } from "../lib/socket-context";
 
@@ -96,6 +98,30 @@ export function TournamentRoomPage() {
       socket.off("tournament:state", onState);
     };
   }, [socket, roomId]);
+
+  const { playSfx } = useAudio();
+  useBgm("battle");
+
+  const lastRoundsCountRef = useRef(0);
+  useEffect(() => {
+    const count = state?.rounds.length ?? 0;
+    if (count > lastRoundsCountRef.current) {
+      lastRoundsCountRef.current = count;
+      if (count > 0) playSfx("special");
+    }
+    if (count === 0) lastRoundsCountRef.current = 0;
+  }, [state?.rounds.length, playSfx]);
+
+  const finishedSfxPlayedRef = useRef(false);
+  useEffect(() => {
+    if (state?.phase !== "finished") {
+      finishedSfxPlayedRef.current = false;
+      return;
+    }
+    if (finishedSfxPlayedRef.current || !state.championId) return;
+    finishedSfxPlayedRef.current = true;
+    playSfx(state.championId === user?.id ? "victory" : "defeat");
+  }, [state?.phase, state?.championId, user?.id, playSfx]);
 
   if (error) {
     return (

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
+import { useAudio } from "../lib/audio-context";
+import { useBgm } from "../hooks/useBgm";
 import { Icon, IconName } from "./Icon";
 import { useSocket } from "../lib/socket-context";
 
@@ -92,6 +94,27 @@ function IncomingTradeInviteBanner() {
   );
 }
 
+function SoundSettings() {
+  const { muted, volume, setMuted, setVolume } = useAudio();
+  return (
+    <div className="btn-row" style={{ alignItems: "center", width: "100%", marginTop: "0.85rem" }}>
+      <button type="button" className="btn" onClick={() => setMuted(!muted)}>
+        {muted ? "🔇 ミュート中" : "🔊 サウンドON"}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={volume}
+        disabled={muted}
+        onChange={(e) => setVolume(Number(e.target.value))}
+        style={{ flex: 1, minWidth: 100 }}
+      />
+    </div>
+  );
+}
+
 function MoreSheet({
   items,
   onClose,
@@ -112,9 +135,10 @@ function MoreSheet({
             </NavLink>
           ))}
         </div>
+        <SoundSettings />
         <button
           className="btn"
-          style={{ width: "100%", marginTop: "0.85rem" }}
+          style={{ width: "100%", marginTop: "0.6rem" }}
           onClick={() => {
             onClose();
             onLogout();
@@ -129,7 +153,9 @@ function MoreSheet({
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { muted, setMuted } = useAudio();
   const [moreOpen, setMoreOpen] = useState(false);
+  useBgm("lobby", null);
   const navItems = user?.role === "admin" ? [...NAV_ITEMS, { to: "/admin", label: "⚙️ 運営" }] : NAV_ITEMS;
   const mobileMoreItems = navItems.filter((item) => !PRIMARY_MOBILE_NAV.some((p) => p.to === item.to));
 
@@ -160,6 +186,9 @@ export function Layout() {
           ))}
         </nav>
         <span className="money-badge">💰 {user?.money ?? 0} コイン</span>
+        <button className="btn desktop-only" onClick={() => setMuted(!muted)} title="サウンド設定">
+          {muted ? "🔇" : "🔊"}
+        </button>
         <button className="btn desktop-only" onClick={() => logout()}>
           ログアウト
         </button>

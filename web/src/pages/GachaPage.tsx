@@ -13,7 +13,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { RarityTag } from "../components/RarityTag";
+import { useBgm } from "../hooks/useBgm";
 import { api, ApiError } from "../lib/api";
+import { useAudio } from "../lib/audio-context";
 import { useAuth } from "../lib/auth-context";
 
 type PullType = "single" | "ten" | "sr" | "ssr";
@@ -105,6 +107,8 @@ function minDelay(ms: number): Promise<void> {
 
 export function GachaPage() {
   const { refresh } = useAuth();
+  const { playSfx } = useAudio();
+  useBgm("gacha");
   const [phase, setPhase] = useState<Phase>("idle");
   const [stage, setStage] = useState(0);
   const [results, setResults] = useState<SpinResult[]>([]);
@@ -152,6 +156,7 @@ export function GachaPage() {
     if (isMegaTier(tier)) {
       window.setTimeout(() => {
         setMegaFlash(true);
+        playSfx("gachaMega");
         document.documentElement.classList.add("mega-shake");
         window.setTimeout(() => {
           setMegaFlash(false);
@@ -161,8 +166,11 @@ export function GachaPage() {
     } else if (tier !== "plain") {
       window.setTimeout(() => {
         setFlash(true);
+        playSfx("gachaConfirm");
         window.setTimeout(() => setFlash(false), FLASH_MS);
       }, 150);
+    } else {
+      window.setTimeout(() => playSfx("gachaConfirm"), 150);
     }
     window.setTimeout(onDone, confirmDurationFor(tier));
   }
@@ -174,6 +182,7 @@ export function GachaPage() {
     timerRef.current = window.setInterval(() => {
       s += 1;
       setStage(s);
+      playSfx("gachaTick");
       if (s >= REVEAL_LABELS.length) {
         if (timerRef.current) window.clearInterval(timerRef.current);
         const rarity = res.results[0]?.rarity ?? "N";

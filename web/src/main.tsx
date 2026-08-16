@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import { AudioProvider } from "./lib/audio-context";
 import { AuthProvider } from "./lib/auth-context";
 import { SocketProvider } from "./lib/socket-context";
 import { startUpdateCheck } from "./lib/update-check";
@@ -18,7 +19,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <BrowserRouter>
           <SocketProvider>
-            <App />
+            <AudioProvider>
+              <App />
+            </AudioProvider>
           </SocketProvider>
         </BrowserRouter>
       </AuthProvider>
