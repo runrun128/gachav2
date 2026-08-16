@@ -38,6 +38,9 @@ profileRouter.get("/profile", requireAuth, async (req, res) => {
     displayName: user.displayName,
     money: user.money,
     role: user.role,
+    selectedTitle: user.selectedTitle,
+    battleWins: user.battleWins,
+    raidClears: user.raidClears,
     ...summary,
   });
 });

@@ -10,6 +10,7 @@ import {
   spinReels,
   spinLimitedReels,
 } from "@identity-slot/game-core";
+import { checkGachaAchievements } from "../lib/achievementService";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 
@@ -67,6 +68,10 @@ gachaRouter.post("/spin", requireAuth, async (req, res) => {
       })
     ),
   ]);
+
+  for (const r of results) {
+    await checkGachaAchievements(userId, r.rarity).catch((err) => console.error("[achievements]", err));
+  }
 
   res.json({ results, money: updatedUser.money });
 });
@@ -126,6 +131,8 @@ gachaRouter.post("/limited/:key/spin", requireAuth, async (req, res) => {
       },
     }),
   ]);
+
+  await checkGachaAchievements(userId, result.rarity).catch((err) => console.error("[achievements]", err));
 
   res.json({ result, money: updatedUser.money });
 });

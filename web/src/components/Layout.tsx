@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { to: "/inventory", label: "🎒 持ち物" },
   { to: "/train", label: "💪 育成" },
   { to: "/trade", label: "🔄 トレード" },
+  { to: "/achievements", label: "🏆 実績" },
 ];
 
 const PRIMARY_MOBILE_NAV: { to: string; label: string; icon: IconName }[] = [

@@ -13,28 +13,30 @@ model User {
   passwordHash           String
   displayName            String
   money                  Int       @default(1000)
-  role                   String    @default("user")
+  role                   String    @default("user") // "user" | "admin"
   createdAt              DateTime  @default(now())
   lastAnnouncementReadAt DateTime?
+  selectedTitle          String?
+  battleWins             Int       @default(0)
+  raidClears             Int       @default(0)
 
-  characters             Character[]
-  items                  InventoryItem[]
-  announcements          Announcement[]       @relation("AnnouncementAuthor")
+  characters            Character[]
+  items                 InventoryItem[]
+  announcements         Announcement[]       @relation("AnnouncementAuthor")
   receivedAnnouncements Announcement[]       @relation("AnnouncementRecipient")
   passwordResetTokens   PasswordResetToken[]
   pushSubscriptions     PushSubscription[]
-  tradeListings          TradeListing[]
-
-  achievements           UserAchievement[]
+  tradeListings         TradeListing[]
+  achievements          UserAchievement[]
 }
 
+// 実績カタログ自体はコード側(lib/achievements.ts)で定義し、ここでは解除済みの記録のみ持つ
 model UserAchievement {
   id            String   @id @default(cuid())
   userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievementId String
   unlockedAt    DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
   @@index([userId])

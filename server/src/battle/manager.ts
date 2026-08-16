@@ -13,6 +13,7 @@ import {
   STEP_REPLAY_BUFFER_MS,
   STEP_REPLAY_MS,
 } from "@identity-slot/game-core";
+import { checkBattleWinAchievements } from "../lib/achievementService";
 import { prisma } from "../lib/prisma";
 import { sendPushToUser, sendPushToUsers } from "../lib/push";
 import { isUserOnline } from "../socket/presence";
@@ -434,6 +435,16 @@ export class BattleManager {
       prisma.user.update({ where: { id: p1 }, data: { money: { increment: room.rewards[p1] ?? 0 } } }),
       prisma.user.update({ where: { id: p2 }, data: { money: { increment: room.rewards[p2] ?? 0 } } }),
     ]);
+
+    if (winner !== "draw") {
+      const winnerUser = await prisma.user.update({
+        where: { id: winner },
+        data: { battleWins: { increment: 1 } },
+      });
+      await checkBattleWinAchievements(winner, winnerUser.battleWins).catch((err) =>
+        console.error("[achievements]", err)
+      );
+    }
 
     this.broadcastState(room);
     this.cleanupRoom(room);

@@ -1,10 +1,14 @@
-export type Achievement = {
+export interface Achievement {
   id: string;
   name: string;
   description: string;
   title: string;
-};
+}
 
+// 元は別の運営メンバーがGitHub上で実装しようとしていたが、実績カタログを配列なのに
+// ACHIEVEMENTS[id] のようにオブジェクトとして参照する不具合と、UserにselectedTitle
+// フィールドが無いままprisma.user.updateで使おうとする不具合でビルドが壊れていたため、
+// 直した上でガチャ/バトル/レイドの実績解除処理を実際につないだ。
 export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "first_gacha",

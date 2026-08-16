@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AdminRoute, ProtectedRoute } from "./components/ProtectedRoute";
+import { AchievementsPage } from "./pages/AchievementsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { AnnouncementsPage } from "./pages/AnnouncementsPage";
 import { BattleLobbyPage } from "./pages/BattleLobbyPage";
@@ -47,6 +48,7 @@ export function App() {
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/train" element={<TrainPage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/trade" element={<TradeLobbyPage />} />
         <Route path="/trade/:roomId" element={<TradeRoomPage />} />
         <Route path="/market" element={<Navigate to="/shop" replace />} />

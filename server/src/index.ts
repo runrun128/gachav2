@@ -6,6 +6,7 @@ import cors from "cors";
 import express from "express";
 import { env } from "./lib/env";
 import { adminRouter } from "./routes/admin";
+import { achievementsRouter } from "./routes/achievements";
 import { announcementsRouter } from "./routes/announcements";
 import { authRouter } from "./routes/auth";
 import { charactersRouter } from "./routes/characters";
@@ -16,7 +17,6 @@ import { profileRouter } from "./routes/profile";
 import { pushRouter } from "./routes/push";
 import { shopRouter } from "./routes/shop";
 import { usersRouter } from "./routes/users";
-import { achievementsRouter } from "./routes/achievements";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -36,8 +36,8 @@ app.use("/api", usersRouter);
 app.use("/api", announcementsRouter);
 app.use("/api", pushRouter);
 app.use("/api", marketRouter);
-app.use("/api/admin", adminRouter);
 app.use("/api", achievementsRouter);
+app.use("/api/admin", adminRouter);
 
 // 本番ビルドでは web/dist を同じプロセスから静的配信し、SPA用にフォールバックする
 // (フロント・APIを1コンテナ/1プロセスにまとめてデプロイをシンプルにするため)

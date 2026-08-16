@@ -13,6 +13,9 @@ interface ProfileData {
   totalSpins: number;
   bestRarity: Rarity;
   rarityCounts: Record<Rarity, number>;
+  selectedTitle: string | null;
+  battleWins: number;
+  raidClears: number;
 }
 
 export function ProfilePage() {
@@ -96,13 +99,17 @@ export function ProfilePage() {
     <div>
       <div className="panel">
         <h1>🪪 PLAYER PROFILE</h1>
-        <p style={{ fontSize: "1.2rem" }}>{data.displayName}</p>
+        <p style={{ fontSize: "1.2rem" }}>
+          {data.selectedTitle && <span style={{ color: "var(--gold)" }}>「{data.selectedTitle}」</span>} {data.displayName}
+        </p>
         <div className="btn-row" style={{ marginBottom: "1.25rem" }}>
           <div className="card">🎰 総ガチャ回数: {data.totalSpins}</div>
           <div className="card">
             🏆 最高レア度: <RarityTag rarity={data.bestRarity} />
           </div>
           <div className="card">💰 所持金: {data.money} コイン</div>
+          <div className="card">⚔️ バトル勝利: {data.battleWins}</div>
+          <div className="card">🐉 レイド討伐: {data.raidClears}</div>
         </div>
         <h3>📊 レアリティ内訳</h3>
         <div className="btn-row">

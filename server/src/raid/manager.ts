@@ -18,6 +18,7 @@ import {
   chooseBossDropItem,
 } from "@identity-slot/game-core";
 import { PendingAction } from "../battle/types";
+import { checkRaidClearAchievements } from "../lib/achievementService";
 import { prisma } from "../lib/prisma";
 import { sendPushToUser, sendPushToUsers } from "../lib/push";
 import { isUserOnline } from "../socket/presence";
@@ -509,6 +510,18 @@ export class RaidManager {
       }
     }
     await Promise.all(updates);
+
+    if (victory) {
+      for (const pid of room.participantIds) {
+        const updatedUser = await prisma.user.update({
+          where: { id: pid },
+          data: { raidClears: { increment: 1 } },
+        });
+        await checkRaidClearAchievements(pid, updatedUser.raidClears).catch((err) =>
+          console.error("[achievements]", err)
+        );
+      }
+    }
 
     room.participantIds.forEach((pid) => this.userRoom.delete(pid));
     this.broadcastState(room);
