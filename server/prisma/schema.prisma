@@ -13,19 +13,19 @@ model User {
   passwordHash           String
   displayName            String
   money                  Int       @default(1000)
-  role                   String    @default("user") // "user" | "admin"
+  role                   String    @default("user")
   createdAt              DateTime  @default(now())
   lastAnnouncementReadAt DateTime?
 
-  characters            Character[]
-  items                 InventoryItem[]
-  announcements         Announcement[]       @relation("AnnouncementAuthor")
+  characters             Character[]
+  items                  InventoryItem[]
+  announcements          Announcement[]       @relation("AnnouncementAuthor")
   receivedAnnouncements Announcement[]       @relation("AnnouncementRecipient")
   passwordResetTokens   PasswordResetToken[]
   pushSubscriptions     PushSubscription[]
-  tradeListings         TradeListing[]
+  tradeListings          TradeListing[]
+
   achievements           UserAchievement[]
-  selectedTitle          String?
 }
 
 model UserAchievement {
