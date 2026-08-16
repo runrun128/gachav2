@@ -157,7 +157,7 @@ export function BattleRoomPage() {
     return (
       <div className="panel">
         <p className="error-text">{error}</p>
-        <button className="btn" onClick={() => navigate("/battle")}>
+        <button className="btn" onClick={() => navigate("/battle/duel")}>
           ロビーに戻る
         </button>
       </div>
@@ -379,7 +379,7 @@ export function BattleRoomPage() {
               🎁 報酬: <strong>+{state.rewards[user.id] ?? 0}</strong> コイン
             </p>
           )}
-          <button className="btn btn-primary" onClick={() => navigate("/battle")}>
+          <button className="btn btn-primary" onClick={() => navigate("/battle/duel")}>
             ロビーに戻る
           </button>
         </div>

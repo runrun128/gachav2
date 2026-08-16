@@ -396,3 +396,57 @@ adminRouter.delete("/item-gacha/entries/:itemKey", async (req, res) => {
   await prisma.itemGachaEntry.delete({ where: { itemKey: req.params.itemKey } });
   res.status(204).end();
 });
+
+// ===== 期間限定ボーナス =====
+
+adminRouter.get("/limited-bonuses", async (_req, res) => {
+  const bonuses = await prisma.limitedBonus.findMany({
+    orderBy: { startsAt: "desc" },
+    include: { _count: { select: { claims: true } } },
+  });
+  res.json({ bonuses });
+});
+
+const createLimitedBonusSchema = z
+  .object({
+    name: z.string().min(1).max(40),
+    description: z.string().min(1).max(200),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    coinAmount: z.coerce.number().int().min(1).max(1_000_000_000).optional(),
+    itemKey: z.string().min(1).optional(),
+    itemAmount: z.coerce.number().int().min(1).max(1_000_000).optional(),
+  })
+  .refine((v) => v.endsAt > v.startsAt, { message: "終了日時は開始日時より後にしてください。" })
+  .refine((v) => v.coinAmount || (v.itemKey && v.itemAmount), {
+    message: "コインまたはアイテムのどちらかを指定してください。",
+  });
+
+adminRouter.post("/limited-bonuses", async (req, res) => {
+  const parsed = createLimitedBonusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "入力内容が不正です。" });
+  const data = parsed.data;
+
+  if (data.itemKey && !ITEMS[data.itemKey]) return res.status(400).json({ error: "存在しないアイテムです。" });
+
+  const created = await prisma.limitedBonus.create({
+    data: {
+      name: data.name,
+      description: data.description,
+      startsAt: data.startsAt,
+      endsAt: data.endsAt,
+      coinAmount: data.coinAmount ?? null,
+      itemKey: data.itemKey ?? null,
+      itemAmount: data.itemKey ? data.itemAmount ?? null : null,
+    },
+  });
+  res.status(201).json({ bonus: created });
+});
+
+adminRouter.delete("/limited-bonuses/:id", async (req, res) => {
+  const existing = await prisma.limitedBonus.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "そのボーナスが見つかりません。" });
+
+  await prisma.limitedBonus.delete({ where: { id: req.params.id } });
+  res.status(204).end();
+});

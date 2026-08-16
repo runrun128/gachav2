@@ -1,14 +1,16 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AdminRoute, ProtectedRoute } from "./components/ProtectedRoute";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { AnnouncementsPage } from "./pages/AnnouncementsPage";
+import { BattleHubPage } from "./pages/BattleHubPage";
 import { BattleLobbyPage } from "./pages/BattleLobbyPage";
 import { BattleRoomPage } from "./pages/BattleRoomPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { GachaPage } from "./pages/GachaPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { HomePage } from "./pages/HomePage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -21,6 +23,13 @@ import { ShopPage } from "./pages/ShopPage";
 import { TradeLobbyPage } from "./pages/TradeLobbyPage";
 import { TradeRoomPage } from "./pages/TradeRoomPage";
 import { TrainPage } from "./pages/TrainPage";
+
+// /raid/:roomId という旧URL(ブックマーク等)を新URLへ転送する。
+// <Navigate>は静的な文字列しか渡せないため、paramsを拾うための小さなラッパーが必要。
+function RaidRoomRedirect() {
+  const { roomId } = useParams<{ roomId: string }>();
+  return <Navigate to={`/battle/raid/${roomId}`} replace />;
+}
 
 export function App() {
   return (
@@ -36,12 +45,16 @@ export function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<GachaPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/gacha" element={<GachaPage />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
-        <Route path="/battle" element={<BattleLobbyPage />} />
-        <Route path="/battle/:roomId" element={<BattleRoomPage />} />
-        <Route path="/raid" element={<RaidLobbyListPage />} />
-        <Route path="/raid/:roomId" element={<RaidRoomPage />} />
+        <Route path="/battle" element={<BattleHubPage />} />
+        <Route path="/battle/duel" element={<BattleLobbyPage />} />
+        <Route path="/battle/duel/:roomId" element={<BattleRoomPage />} />
+        <Route path="/battle/raid" element={<RaidLobbyListPage />} />
+        <Route path="/battle/raid/:roomId" element={<RaidRoomPage />} />
+        <Route path="/raid" element={<Navigate to="/battle/raid" replace />} />
+        <Route path="/raid/:roomId" element={<RaidRoomRedirect />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/ranking" element={<RankingPage />} />

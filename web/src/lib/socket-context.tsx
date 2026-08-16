@@ -58,7 +58,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     socket.on("battle:roomReady", (payload: { roomId: string }) => {
       setIncomingChallenge(null);
-      navigate(`/battle/${payload.roomId}`);
+      navigate(`/battle/duel/${payload.roomId}`);
     });
 
     socket.on("trade:inviteReceived", (payload: IncomingTradeInvite) => {

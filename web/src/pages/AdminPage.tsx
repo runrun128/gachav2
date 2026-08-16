@@ -62,6 +62,18 @@ interface ItemGachaEntryRow {
   item: ItemDef | null;
 }
 
+interface LimitedBonusRow {
+  id: string;
+  name: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  coinAmount: number | null;
+  itemKey: string | null;
+  itemAmount: number | null;
+  _count: { claims: number };
+}
+
 const inputStyle: CSSProperties = {
   background: "var(--bg-panel-raised)",
   border: "1px solid var(--border)",
@@ -133,6 +145,19 @@ export function AdminPage() {
     queryFn: () => api.get<{ banners: LimitedGachaBanner[] }>("/admin/limited-gacha"),
   });
   const [limitedGachaBusy, setLimitedGachaBusy] = useState<string | null>(null);
+
+  const { data: limitedBonusesData } = useQuery({
+    queryKey: ["admin-limited-bonuses"],
+    queryFn: () => api.get<{ bonuses: LimitedBonusRow[] }>("/admin/limited-bonuses"),
+  });
+  const [bonusName, setBonusName] = useState("");
+  const [bonusDescription, setBonusDescription] = useState("");
+  const [bonusStartsAt, setBonusStartsAt] = useState("");
+  const [bonusEndsAt, setBonusEndsAt] = useState("");
+  const [bonusCoinAmount, setBonusCoinAmount] = useState("");
+  const [bonusItemKey, setBonusItemKey] = useState("");
+  const [bonusItemAmount, setBonusItemAmount] = useState("1");
+  const [limitedBonusBusy, setLimitedBonusBusy] = useState<string | boolean>(false);
 
   const { data: customItemsData } = useQuery({
     queryKey: ["admin-custom-items"],
@@ -384,6 +409,48 @@ export function AdminPage() {
       setErrorMessage(err instanceof ApiError ? err.message : "更新に失敗しました。");
     } finally {
       setLimitedGachaBusy(null);
+    }
+  }
+
+  async function createLimitedBonus(e: FormEvent) {
+    e.preventDefault();
+    setLimitedBonusBusy(true);
+    setErrorMessage(null);
+    try {
+      await api.post("/admin/limited-bonuses", {
+        name: bonusName,
+        description: bonusDescription,
+        startsAt: new Date(bonusStartsAt).toISOString(),
+        endsAt: new Date(bonusEndsAt).toISOString(),
+        coinAmount: bonusCoinAmount ? Number(bonusCoinAmount) : undefined,
+        itemKey: bonusItemKey || undefined,
+        itemAmount: bonusItemKey ? Number(bonusItemAmount) : undefined,
+      });
+      setBonusName("");
+      setBonusDescription("");
+      setBonusStartsAt("");
+      setBonusEndsAt("");
+      setBonusCoinAmount("");
+      setBonusItemKey("");
+      setBonusItemAmount("1");
+      await queryClient.invalidateQueries({ queryKey: ["admin-limited-bonuses"] });
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "作成に失敗しました。");
+    } finally {
+      setLimitedBonusBusy(false);
+    }
+  }
+
+  async function deleteLimitedBonus(id: string) {
+    setLimitedBonusBusy(id);
+    setErrorMessage(null);
+    try {
+      await api.delete(`/admin/limited-bonuses/${id}`);
+      await queryClient.invalidateQueries({ queryKey: ["admin-limited-bonuses"] });
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : "削除に失敗しました。");
+    } finally {
+      setLimitedBonusBusy(false);
     }
   }
 
@@ -1145,6 +1212,127 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      <form className="panel" onSubmit={createLimitedBonus}>
+        <h3>✨ 期間限定ボーナス管理</h3>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.88rem" }}>
+          日時を指定してコイン・アイテムを配布するキャンペーンを作成できます。期間中、プレイヤーは1回だけホーム画面から受け取れます。
+        </p>
+        <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={bonusName}
+            onChange={(e) => setBonusName(e.target.value)}
+            placeholder="名前(例: 週末限定ボーナス)"
+            maxLength={40}
+            required
+            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+          />
+        </div>
+        <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginTop: "0.6rem" }}>
+          <input
+            value={bonusDescription}
+            onChange={(e) => setBonusDescription(e.target.value)}
+            placeholder="説明"
+            maxLength={200}
+            required
+            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+          />
+        </div>
+        <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginTop: "0.6rem" }}>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            開始
+            <input
+              type="datetime-local"
+              value={bonusStartsAt}
+              onChange={(e) => setBonusStartsAt(e.target.value)}
+              required
+              style={inputStyle}
+            />
+          </label>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            終了
+            <input
+              type="datetime-local"
+              value={bonusEndsAt}
+              onChange={(e) => setBonusEndsAt(e.target.value)}
+              required
+              style={inputStyle}
+            />
+          </label>
+        </div>
+        <div className="btn-row" style={{ alignItems: "center", flexWrap: "wrap", marginTop: "0.6rem" }}>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            💰 コイン(任意)
+            <input
+              type="number"
+              min={1}
+              value={bonusCoinAmount}
+              onChange={(e) => setBonusCoinAmount(e.target.value)}
+              style={{ ...inputStyle, width: 120 }}
+            />
+          </label>
+          <label className="btn-row" style={{ alignItems: "center", gap: "0.4rem" }}>
+            🎒 アイテム(任意)
+            <select value={bonusItemKey} onChange={(e) => setBonusItemKey(e.target.value)} style={inputStyle}>
+              <option value="">付与しない</option>
+              {itemsData?.items.map((i) => (
+                <option key={i.key} value={i.key}>
+                  {i.emoji} {i.name}({i.tier})
+                </option>
+              ))}
+            </select>
+          </label>
+          {bonusItemKey && (
+            <input
+              type="number"
+              min={1}
+              value={bonusItemAmount}
+              onChange={(e) => setBonusItemAmount(e.target.value)}
+              style={{ ...inputStyle, width: 100 }}
+            />
+          )}
+        </div>
+        <button
+          className="btn btn-primary"
+          type="submit"
+          style={{ marginTop: "0.75rem" }}
+          disabled={limitedBonusBusy === true || !bonusName.trim() || !bonusStartsAt || !bonusEndsAt || (!bonusCoinAmount && !bonusItemKey)}
+        >
+          作成する
+        </button>
+
+        <div className="result-grid" style={{ marginTop: "1rem" }}>
+          {limitedBonusesData?.bonuses.map((b) => (
+            <div className="card" key={b.id}>
+              <div style={{ fontWeight: 700 }}>{b.name}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>{b.description}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.3rem 0" }}>
+                {new Date(b.startsAt).toLocaleString()} 〜 {new Date(b.endsAt).toLocaleString()}
+              </div>
+              <div style={{ color: "var(--gold)", fontSize: "0.85rem" }}>
+                {b.coinAmount ? `💰 ${b.coinAmount}` : null}
+                {b.coinAmount && b.itemKey ? " / " : null}
+                {b.itemKey ? `🎒 ${b.itemKey} ×${b.itemAmount}` : null}
+              </div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", margin: "0.3rem 0" }}>
+                受取済み: {b._count.claims}人
+              </div>
+              <button
+                type="button"
+                className="btn"
+                style={{ color: "var(--danger)" }}
+                disabled={limitedBonusBusy === b.id}
+                onClick={() => deleteLimitedBonus(b.id)}
+              >
+                削除する
+              </button>
+            </div>
+          ))}
+          {limitedBonusesData?.bonuses.length === 0 && (
+            <p style={{ color: "var(--text-dim)" }}>期間限定ボーナスはまだありません。</p>
+          )}
+        </div>
+      </form>
 
       <div className="panel">
         <h3>🏪 ショップエディター</h3>

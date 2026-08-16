@@ -175,7 +175,7 @@ export function RaidRoomPage() {
     return (
       <div className="panel">
         <p className="error-text">{error}</p>
-        <button className="btn" onClick={() => navigate("/raid")}>
+        <button className="btn" onClick={() => navigate("/battle/raid")}>
           レイド一覧に戻る
         </button>
       </div>
@@ -224,7 +224,7 @@ export function RaidRoomPage() {
       return;
     }
     setConfirmingLeave(false);
-    socket?.emit("raid:leave", { roomId }, () => navigate("/raid"));
+    socket?.emit("raid:leave", { roomId }, () => navigate("/battle/raid"));
   }
 
   function sendChat(e: FormEvent) {
@@ -452,7 +452,7 @@ export function RaidRoomPage() {
                 ))}
             </div>
           )}
-          <button className="btn btn-primary" style={{ marginTop: "1rem" }} onClick={() => navigate("/raid")}>
+          <button className="btn btn-primary" style={{ marginTop: "1rem" }} onClick={() => navigate("/battle/raid")}>
             レイド一覧に戻る
           </button>
         </div>

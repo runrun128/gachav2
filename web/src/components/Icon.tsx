@@ -1,4 +1,4 @@
-export type IconName = "gacha" | "battle" | "raid" | "announcement" | "more" | "gem";
+export type IconName = "home" | "gacha" | "battle" | "raid" | "announcement" | "more" | "gem";
 
 interface IconProps {
   name: IconName;
@@ -18,6 +18,25 @@ export function Icon({ name, size = 22, className }: IconProps) {
   };
 
   switch (name) {
+    case "home":
+      return (
+        <svg {...common}>
+          <path
+            d="M4 11.5 12 4l8 7.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6 10v8.5A1.5 1.5 0 0 0 7.5 20h9a1.5 1.5 0 0 0 1.5-1.5V10"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path d="M10 20v-5.5h4V20" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        </svg>
+      );
     case "gacha":
       return (
         <svg {...common}>

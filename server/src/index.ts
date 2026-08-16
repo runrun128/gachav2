@@ -13,6 +13,7 @@ import { dailyBonusRouter } from "./routes/dailyBonus";
 import { charactersRouter } from "./routes/characters";
 import { gachaRouter } from "./routes/gacha";
 import { loadCustomGameContent } from "./lib/gameContent";
+import { limitedBonusRouter } from "./routes/limitedBonus";
 import { marketRouter } from "./routes/market";
 import { profileRouter } from "./routes/profile";
 import { pushRouter } from "./routes/push";
@@ -39,6 +40,7 @@ app.use("/api", pushRouter);
 app.use("/api", marketRouter);
 app.use("/api", achievementsRouter);
 app.use("/api", dailyBonusRouter);
+app.use("/api", limitedBonusRouter);
 app.use("/api/admin", adminRouter);
 
 // 本番ビルドでは web/dist を同じプロセスから静的配信し、SPA用にフォールバックする

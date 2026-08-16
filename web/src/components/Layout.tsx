@@ -7,10 +7,10 @@ import { Icon, IconName } from "./Icon";
 import { useSocket } from "../lib/socket-context";
 
 const NAV_ITEMS = [
-  { to: "/", label: "🎰 ガチャ" },
-  { to: "/announcements", label: "📢 お知らせ" },
+  { to: "/", label: "🏠 ホーム" },
+  { to: "/gacha", label: "🎰 ガチャ" },
   { to: "/battle", label: "⚔️ バトル" },
-  { to: "/raid", label: "🐉 レイド" },
+  { to: "/announcements", label: "📢 お知らせ" },
   { to: "/profile", label: "🪪 プロフィール" },
   { to: "/history", label: "📖 図鑑" },
   { to: "/ranking", label: "🏆 ランキング" },
@@ -22,9 +22,9 @@ const NAV_ITEMS = [
 ];
 
 const PRIMARY_MOBILE_NAV: { to: string; label: string; icon: IconName }[] = [
-  { to: "/", label: "ガチャ", icon: "gacha" },
+  { to: "/", label: "ホーム", icon: "home" },
+  { to: "/gacha", label: "ガチャ", icon: "gacha" },
   { to: "/battle", label: "バトル", icon: "battle" },
-  { to: "/raid", label: "レイド", icon: "raid" },
   { to: "/announcements", label: "お知らせ", icon: "announcement" },
 ];
 

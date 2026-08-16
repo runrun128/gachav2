@@ -30,6 +30,7 @@ model User {
   pushSubscriptions     PushSubscription[]
   tradeListings         TradeListing[]
   achievements          UserAchievement[]
+  limitedBonusClaims    LimitedBonusClaim[]
 }
 
 // 実績カタログ自体はコード側(lib/achievements.ts)で定義し、ここでは解除済みの記録のみ持つ
@@ -179,6 +180,36 @@ model InventoryItem {
   quantity Int    @default(0)
 
   @@unique([userId, itemKey])
+}
+
+// 運営が期間限定で開催するボーナスキャンペーン(例: 「週末2倍ログインボーナス」)。
+// startsAt〜endsAtの間だけプレイヤーが1回だけ受け取れる。
+model LimitedBonus {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  startsAt    DateTime
+  endsAt      DateTime
+  coinAmount  Int?
+  itemKey     String?
+  itemAmount  Int?
+  createdAt   DateTime @default(now())
+
+  claims LimitedBonusClaim[]
+
+  @@index([startsAt, endsAt])
+}
+
+model LimitedBonusClaim {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  limitedBonusId String
+  limitedBonus   LimitedBonus @relation(fields: [limitedBonusId], references: [id], onDelete: Cascade)
+  claimedAt      DateTime     @default(now())
+
+  @@unique([userId, limitedBonusId])
+  @@index([userId])
 }
 
 model Announcement {

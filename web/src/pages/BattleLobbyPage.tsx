@@ -110,7 +110,7 @@ export function BattleLobbyPage() {
       {activeRoomId && (
         <div className="panel">
           <p>⚔️ 進行中のバトルがあります。</p>
-          <Link className="btn btn-primary" to={`/battle/${activeRoomId}`}>
+          <Link className="btn btn-primary" to={`/battle/duel/${activeRoomId}`}>
             バトルに戻る
           </Link>
         </div>
@@ -214,7 +214,7 @@ export function BattleLobbyPage() {
                 {b.phase === "select" ? "キャラクター選択中" : `ラウンド ${b.roundNo}`}
                 {b.spectatorCount > 0 && ` ・ 👀${b.spectatorCount}`}
               </div>
-              <Link className="btn" to={`/battle/${b.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
+              <Link className="btn" to={`/battle/duel/${b.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
                 観戦する
               </Link>
             </div>

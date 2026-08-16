@@ -93,7 +93,7 @@ export function RaidLobbyListPage() {
     socket.emit("raid:createLobby", { roomName, bossKey }, (res: AckResponse<{ roomId: string }>) => {
       setCreating(false);
       if (res.ok && res.data) {
-        navigate(`/raid/${res.data.roomId}`);
+        navigate(`/battle/raid/${res.data.roomId}`);
       } else {
         setError(res.error ?? "部屋の作成に失敗しました。");
       }
@@ -107,7 +107,7 @@ export function RaidLobbyListPage() {
     socket.emit("raid:joinLobby", { roomId }, (res: AckResponse<{ roomId: string }>) => {
       setJoiningId(null);
       if (res.ok && res.data) {
-        navigate(`/raid/${res.data.roomId}`);
+        navigate(`/battle/raid/${res.data.roomId}`);
       } else {
         setError(res.error ?? "参加に失敗しました。");
       }
@@ -119,7 +119,7 @@ export function RaidLobbyListPage() {
       {activeRoomId && (
         <div className="panel">
           <p>🐉 進行中のレイドがあります。</p>
-          <button className="btn btn-primary" onClick={() => navigate(`/raid/${activeRoomId}`)}>
+          <button className="btn btn-primary" onClick={() => navigate(`/battle/raid/${activeRoomId}`)}>
             レイドに戻る
           </button>
         </div>
@@ -218,7 +218,7 @@ export function RaidLobbyListPage() {
                 {r.spectatorCount > 0 && ` ・ 👀${r.spectatorCount}`}
               </div>
               <div style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>👥 {r.participantCount}人参加中</div>
-              <Link className="btn" to={`/raid/${r.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
+              <Link className="btn" to={`/battle/raid/${r.roomId}`} style={{ marginTop: "0.6rem", display: "inline-block" }}>
                 観戦する
               </Link>
             </div>
